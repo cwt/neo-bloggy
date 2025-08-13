@@ -1,21 +1,20 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, PasswordField, validators
-from wtforms.validators import DataRequired, URL
+from wtforms import StringField, SubmitField, PasswordField
+from wtforms.validators import DataRequired, URL, Email, Length, EqualTo
 from flask_ckeditor import CKEditorField
-from wtforms.fields.html5 import EmailField
 
 
 # ----- SIGN UP FORM ----- #
 class RegisterForm(FlaskForm):
-    email = EmailField("Email address", [
-        validators.DataRequired(), validators.Email()
+    email = StringField("Email address", validators=[
+        DataRequired(), Email()
     ])
-    password = PasswordField('Password', [
-        validators.DataRequired(),
-        validators.EqualTo('confirm', message='Passwords must match')
+    password = PasswordField('Password', validators=[
+        DataRequired(),
+        EqualTo('confirm', message='Passwords must match')
     ])
     confirm = PasswordField('Repeat Password')
-    name = StringField("Name", [validators.Length(min=4, max=25)])
+    name = StringField("Name", validators=[Length(min=4, max=25)])
     submit = SubmitField("Register")
 
 

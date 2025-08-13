@@ -76,12 +76,12 @@
                         <span class="date sub-text">Posted by {{comment.comment_author}}</span>
                         {% if session.user == comment.comment_author %}
                         <button type="button" class="btn btn-outline-danger" data-toggle="modal"
-                           data-target="#deletecomment{{ post._id }}">
+                           data-target="#deletecomment{{ comment._id }}">
                         Delete Comment
                         </button>
 
                         <!-- MODAL -->
-                        <div class="modal fade" id="deletecomment{{ post._id }}" tabindex="-1" role="dialog"
+                        <div class="modal fade" id="deletecomment{{ comment._id }}" tabindex="-1" role="dialog"
                            aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
                            <div class="modal-dialog modal-dialog-centered" role="document">
                               <div class="modal-content">

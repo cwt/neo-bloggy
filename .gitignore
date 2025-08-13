@@ -18,3 +18,4 @@ venv*
 .env
 .DS_Store
 *.db
+static/uploads/*

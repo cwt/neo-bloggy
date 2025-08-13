@@ -1,7 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, PasswordField
+from wtforms import StringField, SubmitField, PasswordField, TextAreaField
 from wtforms.validators import DataRequired, URL, Email, Length, EqualTo
-from flask_ckeditor import CKEditorField
 
 
 # ----- SIGN UP FORM ----- #
@@ -30,11 +29,11 @@ class CreatePostForm(FlaskForm):
     title = StringField("Title", validators=[DataRequired()])
     subtitle = StringField("Subtitle", validators=[DataRequired()])
     img_url = StringField("Image URL", validators=[DataRequired(), URL()])
-    body = CKEditorField("What's on your mind...", validators=[DataRequired()])
+    body = TextAreaField("Content (Markdown supported)", validators=[DataRequired()])
     submit = SubmitField("Publish")
 
 
 # ----- COMMENT FORM ----- #
 class CommentForm(FlaskForm):
-    comment_text = CKEditorField("Comment", validators=[DataRequired()])
+    comment_text = TextAreaField("Comment (Markdown supported)", validators=[DataRequired()])
     submit = SubmitField("Submit Comment")

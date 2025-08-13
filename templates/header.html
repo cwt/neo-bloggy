@@ -15,6 +15,7 @@
          integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous"/>
       <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.1/css/all.css"
          integrity="sha384-gfdkjb5BdAXd+lj+gudLWI+BXq4IuLW5IT+brZEZsLFm++aCMlF1V92rMkPaX4PP" crossorigin="anonymous">
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
 
        <!-- CUSTOM STYLE -->
       <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
@@ -51,6 +52,10 @@
                   {% else: %}
                   <li class="nav-item">
                      <a class="nav-link" href="{{ url_for('create_post') }}">Write</a>
+                     <span class="sr-only">(current)</span>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{{ url_for('upload_image') }}">Upload Image</a>
                      <span class="sr-only">(current)</span>
                   </li>
                   <li class="nav-item">

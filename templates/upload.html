@@ -1,0 +1,60 @@
+{% include "header.html" %}
+
+<main role="main">
+   <div class="jumbotron write-jumbotron text-center">
+      <div class="page-heading mt-5">
+         <h1 class="create-post-heading">Upload Image</h1>
+         <span class="subheading">Upload images for your blog posts</span>
+      </div>
+   </div>
+   <div class="container">
+      <div class="row">
+         <div class="col-lg-8 col-md-10 mx-auto">
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-info" role="alert">
+               {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <form method="POST" enctype="multipart/form-data">
+               <div class="form-group">
+                  <label for="file">Choose Image</label>
+                  <input type="file" class="form-control-file" id="file" name="file" accept="image/*" required>
+                  <small class="form-text text-muted">Supported formats: PNG, JPG, JPEG, GIF, WebP (max 16MB)</small>
+               </div>
+               <button type="submit" class="btn btn-primary">Upload</button>
+            </form>
+
+            {% if uploaded_files %}
+            <hr>
+            <h3>Recently Uploaded Images</h3>
+            <div class="row">
+               {% for file in uploaded_files %}
+               <div class="col-md-4 mb-3">
+                  <div class="card">
+                     <img src="{{ url_for('uploaded_files', filename=file) }}" class="card-img-top" alt="{{ file }}">
+                     <div class="card-body">
+                        <p class="card-text">
+                           <small class="text-muted">{{ file }}</small>
+                        </p>
+                        <input type="text" class="form-control form-control-sm" 
+                               value="{{ url_for('uploaded_files', filename=file, _external=True) }}" 
+                               readonly onclick="this.select()">
+                     </div>
+                  </div>
+               </div>
+               {% endfor %}
+            </div>
+            {% endif %}
+         </div>
+      </div>
+   </div>
+</main>
+
+<br>
+<hr>
+{% include "footer.html" %}

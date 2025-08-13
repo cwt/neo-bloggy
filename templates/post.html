@@ -22,7 +22,7 @@
    <div class="container">
       <div class="row">
          <div class="col-lg-8 col-md-10 mx-auto">
-            {{ post.body|safe }}
+            {{ post.body|markdown|safe }}
             <hr>
             {% if session.user == post.author %}
             <div class="clearfix mb-5">
@@ -60,8 +60,6 @@
 
             <!-- COMMENTS AREA -->
             {% if session.user %}
-            {{ ckeditor.load() }}
-            {{ ckeditor.config(name='comment_text') }}
             {{ wtf.quick_form(form, novalidate=True, button_map={"submit": "success"}) }}
             {% endif %}
             <div class="col-lg-8 col-md-10 mx-auto comment">
@@ -72,7 +70,7 @@
                         <i class="far fa-user"></i>
                      </div>
                      <div class="commentText">
-                        {{comment.text|safe}}
+                        {{comment.text|markdown|safe}}
                         <span class="date sub-text">Posted by {{comment.comment_author}}</span>
                         {% if session.user == comment.comment_author %}
                         <button type="button" class="btn btn-outline-danger" data-toggle="modal"
@@ -117,6 +115,164 @@
       </div>
    </div>
 </article>
+
+<!-- File Browser Modal -->
+<div class="modal fade" id="imageBrowserModal" tabindex="-1" role="dialog">
+   <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+         <div class="modal-header">
+            <h5 class="modal-title">Select an Image</h5>
+            <button type="button" class="close" data-dismiss="modal">
+               <span>&times;</span>
+            </button>
+         </div>
+         <div class="modal-body">
+            <div id="imageBrowserContent">
+               <div class="text-center">
+                  <div class="spinner-border" role="status">
+                     <span class="sr-only">Loading...</span>
+                  </div>
+               </div>
+            </div>
+         </div>
+         <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+         </div>
+      </div>
+   </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize SimpleMDE for comment content
+    if (document.getElementById('comment_text')) {
+        var simplemde = new SimpleMDE({
+            element: document.getElementById('comment_text'),
+            toolbar: [
+                "bold", "italic", "heading", "|",
+                "quote", "unordered-list", "ordered-list", "|",
+                "link", "image", "|",
+                "preview", "|",
+                {
+                    name: "upload",
+                    action: function customFunction(editor) {
+                        // Create file input
+                        var fileInput = document.createElement('input');
+                        fileInput.type = 'file';
+                        fileInput.accept = 'image/*';
+                        
+                        fileInput.onchange = function(e) {
+                            var file = e.target.files[0];
+                            if (file) {
+                                var formData = new FormData();
+                                formData.append('file', file);
+                                
+                                // Upload file
+                                fetch('/upload', {
+                                    method: 'POST',
+                                    body: formData
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.data && data.data.filePath) {
+                                        // Insert image into editor
+                                        var cm = editor.codemirror;
+                                        var output = '![' + file.name + '](' + data.data.filePath + ')';
+                                        var cursor = cm.getCursor();
+                                        cm.replaceSelection(output);
+                                    } else {
+                                        alert('Upload failed: ' + (data.error || 'Unknown error'));
+                                    }
+                                })
+                                .catch(error => {
+                                    alert('Upload failed: ' + error.message);
+                                });
+                            }
+                        };
+                        
+                        fileInput.click();
+                    },
+                    className: "fa fa-upload",
+                    title: "Upload Image",
+                },
+                {
+                    name: "browse",
+                    action: function customFunction(editor) {
+                        // Store reference to editor for later use
+                        window.currentEditor = editor;
+                        
+                        // Load images and show modal
+                        loadImagesAndShowModal();
+                    },
+                    className: "fa fa-folder",
+                    title: "Browse Images",
+                }
+            ]
+        });
+    }
+    
+    // Function to load images and show modal
+    function loadImagesAndShowModal() {
+        // Show loading indicator
+        document.getElementById('imageBrowserContent').innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        `;
+        
+        // Show modal
+        $('#imageBrowserModal').modal('show');
+        
+        // Load images from API
+        fetch('/api/images')
+        .then(response => response.json())
+        .then(data => {
+            if (data.images && data.images.length > 0) {
+                // Create image grid
+                let html = '<div class="row">';
+                data.images.forEach(image => {
+                    html += `
+                        <div class="col-md-3 mb-3">
+                            <div class="card image-browser-item" style="cursor: pointer;" 
+                                 onclick="selectImage('${image.url}', '${image.name}')">
+                                <img src="${image.url}" class="card-img-top" style="height: 150px; object-fit: cover;" alt="${image.name}">
+                                <div class="card-body p-2">
+                                    <p class="card-text small text-truncate mb-0">${image.name}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                document.getElementById('imageBrowserContent').innerHTML = html;
+            } else {
+                document.getElementById('imageBrowserContent').innerHTML = '<p class="text-center">No images uploaded yet.</p>';
+            }
+        })
+        .catch(error => {
+            document.getElementById('imageBrowserContent').innerHTML = '<p class="text-center text-danger">Failed to load images.</p>';
+            console.error('Error loading images:', error);
+        });
+    }
+    
+    // Function to select an image
+    window.selectImage = function(url, name) {
+        // Close modal
+        $('#imageBrowserModal').modal('hide');
+        
+        // Insert image into editor if we have a reference
+        if (window.currentEditor) {
+            var cm = window.currentEditor.codemirror;
+            var output = '![' + name + '](' + url + ')';
+            var cursor = cm.getCursor();
+            cm.replaceSelection(output);
+        }
+    };
+});
+</script>
+
 <br>
 <hr>
 {% include "footer.html" %}

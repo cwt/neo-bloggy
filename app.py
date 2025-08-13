@@ -1,13 +1,16 @@
 import os
 from flask import (
     Flask, flash, render_template,
-    redirect, request, session, url_for, g)
-from flask_ckeditor import CKEditor
+    redirect, request, session, url_for, g, jsonify, send_from_directory)
 from flask_bootstrap import Bootstrap
 from forms import RegisterForm, LoginForm, CreatePostForm, CommentForm
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from datetime import date
 import neosqlite
+import uuid
+import markdown
+import bleach
 
 if os.path.exists("env.py"):
     import env
@@ -16,14 +19,45 @@ app = Flask(__name__)
 
 app.secret_key = os.environ.get("SECRET_KEY")
 Bootstrap(app)
-ckeditor = CKEditor(app)
 
-# Configure CKEditor to serve locally
-app.config['CKEDITOR_SERVE_LOCAL'] = True
-app.config['CKEDITOR_PKG_TYPE'] = 'standard'
+# Configure file upload settings
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Create upload directory if it doesn't exist
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Allowed file extensions
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 # Database configuration
 DB_PATH = os.environ.get("DB_PATH", "/tmp/neosqlite.db")
+
+def allowed_file(filename):
+    """Check if the file extension is allowed."""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def markdown_to_html(markdown_text):
+    """Convert markdown text to HTML with sanitization."""
+    # Convert markdown to HTML
+    html = markdown.markdown(markdown_text, extensions=['extra', 'codehilite'])
+    
+    # Sanitize HTML to prevent XSS
+    allowed_tags = ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
+                   'blockquote', 'code', 'pre', 'ul', 'ol', 'li', 'a', 'img', 'hr']
+    allowed_attributes = {
+        'a': ['href', 'title'],
+        'img': ['src', 'alt', 'title', 'width', 'height']
+    }
+    
+    return bleach.clean(html, tags=allowed_tags, attributes=allowed_attributes)
+
+# Add custom filter for markdown
+@app.template_filter('markdown')
+def markdown_filter(markdown_text):
+    """Jinja2 filter to convert markdown to HTML."""
+    return markdown_to_html(markdown_text)
 
 def get_db():
     """Get database connection for the current request."""
@@ -37,6 +71,131 @@ def close_db(error):
     if 'db' in g:
         g.db.close()
         g.pop('db', None)
+
+
+# ---------------- #
+#   FILE UPLOAD    #
+# ---------------- #
+
+@app.route('/files/<path:filename>')
+def uploaded_files(filename):
+    """Serve uploaded files."""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    """Handle file uploads from markdown editor."""
+    # Check if file is in request
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file selected'}), 400
+    
+    file = request.files['file']
+    
+    # Check if file is selected
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    # Check if file has allowed extension
+    if file and allowed_file(file.filename):
+        # Generate a unique filename
+        filename = secure_filename(file.filename)
+        name, ext = os.path.splitext(filename)
+        unique_filename = f"{name}_{uuid.uuid4().hex}{ext}"
+        
+        # Save file
+        try:
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+            
+            # Generate URL for the uploaded file
+            url = url_for('uploaded_files', filename=unique_filename, _external=True)
+            
+            # Return success response in format expected by markdown editor
+            return jsonify({'data': {'filePath': url}})
+        except Exception as e:
+            return jsonify({'error': f'Upload failed: {str(e)}'}), 500
+    else:
+        return jsonify({'error': 'File type not allowed. Please upload PNG, JPG, JPEG, GIF, or WebP images.'}), 400
+
+
+@app.route('/api/images')
+def list_images():
+    """API endpoint to list all uploaded images."""
+    try:
+        # Get all uploaded files
+        files = os.listdir(app.config['UPLOAD_FOLDER'])
+        # Filter only image files
+        image_files = [f for f in files if allowed_file(f)]
+        # Sort by modification time (newest first)
+        image_files.sort(key=lambda x: os.path.getmtime(os.path.join(app.config['UPLOAD_FOLDER'], x)), reverse=True)
+        
+        # Create list of image data
+        images = []
+        for filename in image_files:
+            file_url = url_for('uploaded_files', filename=filename, _external=True)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file_size = os.path.getsize(file_path)
+            file_modified = os.path.getmtime(file_path)
+            
+            images.append({
+                'name': filename,
+                'url': file_url,
+                'size': file_size,
+                'modified': file_modified
+            })
+        
+        return jsonify({'images': images})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/upload-image', methods=['GET', 'POST'])
+def upload_image():
+    """Handle image uploads from the web interface."""
+    if request.method == 'POST':
+        # Check if file is in request
+        if 'file' not in request.files:
+            flash('No file selected')
+            return redirect(request.url)
+        
+        file = request.files['file']
+        
+        # Check if file is selected
+        if file.filename == '':
+            flash('No file selected')
+            return redirect(request.url)
+        
+        # Check if file has allowed extension
+        if file and allowed_file(file.filename):
+            # Generate a unique filename
+            filename = secure_filename(file.filename)
+            name, ext = os.path.splitext(filename)
+            unique_filename = f"{name}_{uuid.uuid4().hex}{ext}"
+            
+            # Save file
+            try:
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+                flash(f'File uploaded successfully! URL: {url_for("uploaded_files", filename=unique_filename, _external=True)}')
+            except Exception as e:
+                flash(f'Upload failed: {str(e)}')
+        else:
+            flash('File type not allowed. Please upload PNG, JPG, JPEG, GIF, or WebP images.')
+        
+        return redirect(url_for('upload_image'))
+    
+    # GET request - show upload form and list of uploaded files
+    try:
+        uploaded_files = os.listdir(app.config['UPLOAD_FOLDER'])
+        # Filter only image files
+        image_files = [f for f in uploaded_files if allowed_file(f)]
+        # Sort by modification time (newest first)
+        image_files.sort(key=lambda x: os.path.getmtime(os.path.join(app.config['UPLOAD_FOLDER'], x)), reverse=True)
+        # Limit to last 12 files
+        image_files = image_files[:12]
+    except:
+        image_files = []
+    
+    return render_template('upload.html', uploaded_files=image_files)
 
 
 # ---------------- #

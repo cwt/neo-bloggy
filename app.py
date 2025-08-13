@@ -442,14 +442,20 @@ def search():
     '''
     db = get_db()
     query = request.form.get("query")
-    # For neosqlite, we'll use a simple text search on title and subtitle
-    # Using a more compatible approach with basic string matching
+    # For neosqlite, we'll use the $contains operator for case-insensitive substring search
     if query:
-        # Get all posts and filter in Python as a workaround
-        all_posts = list(db.blog_posts.find())
-        posts = [post for post in all_posts 
-                if query.lower() in post.get("title", "").lower() or 
-                   query.lower() in post.get("subtitle", "").lower()]
+        # Use neosqlite's $contains for efficient SQL-level search
+        # Since $or operator is not working, we'll do two separate queries and combine results
+        title_matches = list(db.blog_posts.find({"title": {"$contains": query}}))
+        subtitle_matches = list(db.blog_posts.find({"subtitle": {"$contains": query}}))
+        
+        # Combine results and remove duplicates
+        post_ids = set()
+        posts = []
+        for post in title_matches + subtitle_matches:
+            if post["_id"] not in post_ids:
+                post_ids.add(post["_id"])
+                posts.append(post)
     else:
         posts = list(db.blog_posts.find())
     return render_template("index.html", all_posts=posts)

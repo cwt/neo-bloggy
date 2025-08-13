@@ -444,18 +444,13 @@ def search():
     query = request.form.get("query")
     # For neosqlite, we'll use the $contains operator for case-insensitive substring search
     if query:
-        # Use neosqlite's $contains for efficient SQL-level search
-        # Since $or operator is not working, we'll do two separate queries and combine results
-        title_matches = list(db.blog_posts.find({"title": {"$contains": query}}))
-        subtitle_matches = list(db.blog_posts.find({"subtitle": {"$contains": query}}))
-        
-        # Combine results and remove duplicates
-        post_ids = set()
-        posts = []
-        for post in title_matches + subtitle_matches:
-            if post["_id"] not in post_ids:
-                post_ids.add(post["_id"])
-                posts.append(post)
+        # Use neosqlite's $contains with $or for efficient SQL-level search
+        posts = list(db.blog_posts.find({
+            "$or": [
+                {"title": {"$contains": query}},
+                {"subtitle": {"$contains": query}}
+            ]
+        }))
     else:
         posts = list(db.blog_posts.find())
     return render_template("index.html", all_posts=posts)

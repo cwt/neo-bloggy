@@ -5,14 +5,15 @@ from wtforms.validators import DataRequired, URL, Email, Length, EqualTo
 
 # ----- SIGN UP FORM ----- #
 class RegisterForm(FlaskForm):
-    email = StringField("Email address", validators=[
-        DataRequired(), Email()
-    ])
-    password = PasswordField('Password', validators=[
-        DataRequired(),
-        EqualTo('confirm', message='Passwords must match')
-    ])
-    confirm = PasswordField('Repeat Password')
+    email = StringField("Email address", validators=[DataRequired(), Email()])
+    password = PasswordField(
+        "Password",
+        validators=[
+            DataRequired(),
+            EqualTo("confirm", message="Passwords must match"),
+        ],
+    )
+    confirm = PasswordField("Repeat Password")
     name = StringField("Name", validators=[Length(min=4, max=25)])
     submit = SubmitField("Register")
 
@@ -29,11 +30,15 @@ class CreatePostForm(FlaskForm):
     title = StringField("Title", validators=[DataRequired()])
     subtitle = StringField("Subtitle", validators=[DataRequired()])
     img_url = StringField("Image URL", validators=[DataRequired(), URL()])
-    body = TextAreaField("Content (Markdown supported)", validators=[DataRequired()])
+    body = TextAreaField(
+        "Content (Markdown supported)", validators=[DataRequired()]
+    )
     submit = SubmitField("Publish")
 
 
 # ----- COMMENT FORM ----- #
 class CommentForm(FlaskForm):
-    comment_text = TextAreaField("Comment (Markdown supported)", validators=[DataRequired()])
+    comment_text = TextAreaField(
+        "Comment (Markdown supported)", validators=[DataRequired()]
+    )
     submit = SubmitField("Submit Comment")

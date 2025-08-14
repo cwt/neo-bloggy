@@ -20,6 +20,7 @@ import neosqlite
 import uuid
 import markdown
 import bleach
+from bleach.css_sanitizer import CSSSanitizer
 
 if os.path.exists("env.py"):
     import env
@@ -56,6 +57,18 @@ def markdown_to_html(markdown_text):
     # Convert markdown to HTML
     html = markdown.markdown(markdown_text, extensions=["extra", "codehilite"])
 
+    # Create CSS sanitizer to allow safe CSS properties
+    css_sanitizer = CSSSanitizer(
+        allowed_css_properties=[
+            "width",
+            "height",
+            "max-width",
+            "max-height",
+            "margin",
+            "display",
+        ]
+    )
+
     # Sanitize HTML to prevent XSS
     allowed_tags = [
         "p",
@@ -81,10 +94,15 @@ def markdown_to_html(markdown_text):
     ]
     allowed_attributes = {
         "a": ["href", "title"],
-        "img": ["src", "alt", "title", "width", "height"],
+        "img": ["src", "alt", "title", "width", "height", "style"],
     }
 
-    return bleach.clean(html, tags=allowed_tags, attributes=allowed_attributes)
+    return bleach.clean(
+        html,
+        tags=allowed_tags,
+        attributes=allowed_attributes,
+        css_sanitizer=css_sanitizer,
+    )
 
 
 # Add custom filter for markdown

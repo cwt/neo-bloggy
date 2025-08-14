@@ -319,3 +319,15 @@ html {
          font-style: italic;
      }
 }
+
+/*------------------------------------*\
+ #RESPONSIVE IMAGES
+\*------------------------------------*/
+
+/* Make sure images in post content are responsive */
+article img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1rem auto;
+}

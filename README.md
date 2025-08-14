@@ -64,16 +64,15 @@ This application includes several modern web development features:
 - Better responsive design capabilities
 - Replaced jQuery with Cash.js for lighter DOM manipulation
 
-### Dark Mode Support
-- User preference-based dark/light mode toggle
-- System preference detection (prefers-color-scheme)
-- Persistent theme selection using localStorage
-- Custom CSS variables for consistent styling
-
 ### Performance Optimizations
 - HTML minification to reduce bandwidth usage
 - Optional caching mechanism for improved response times
 - Modern dependency versions for better security and performance
+
+### Code Modernization
+- Updated to Flask 3.1 with modern Python practices
+- Removed deprecated libraries and methods
+- Improved code structure and maintainability
 
 ## Performance Optimizations
 

@@ -22,7 +22,7 @@ We've modified this project to work with NeoSQLite, demonstrating that NeoSQLite
 ### Front-End Technologies
 - HTML5
 - CSS3 (Bootstrap 5.3)
-- JavaScript
+- JavaScript (Cash.js for DOM manipulation)
 - Google Fonts (Lora and Open Sans)
 - Font Awesome 6.5
 
@@ -62,6 +62,7 @@ This application includes several modern web development features:
 - Updated from Bootstrap 4 to the latest Bootstrap 5.3
 - Modern CSS framework with improved components and utilities
 - Better responsive design capabilities
+- Replaced jQuery with Cash.js for lighter DOM manipulation
 
 ### Dark Mode Support
 - User preference-based dark/light mode toggle

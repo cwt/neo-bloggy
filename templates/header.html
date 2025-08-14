@@ -34,7 +34,7 @@
             <div class="collapse navbar-collapse" id="navbarResponsive">
                <ul class="navbar-nav ml-auto">
                   <form class="form-inline my-2 my-lg-0" action="{{ url_for('search') }}" method="POST">
-                     <input class="form-control mr-sm-2 search-button-margin" type="search" name="query" placeholder="Search all posts..."
+                     <input class="form-control mr-sm-2 search-button-margin" type="search" name="query" placeholder="Search all posts..." value="{{ search_query or '' }}"
                         aria-label="Search">
                      <button class="btn btn-dark ml-1" type="submit">Search</button>
                      <a class="btn btn-outline-info ml-1" href="{{ url_for('get_all_posts') }}"

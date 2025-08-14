@@ -555,7 +555,7 @@ def search():
         posts = list(db.blog_posts.find({"$text": {"$search": query}}))
     else:
         posts = list(db.blog_posts.find())
-    return render_template("index.html", all_posts=posts)
+    return render_template("index.html", all_posts=posts, search_query=query)
 
 
 # ----- HANDLE 404 ERROR ----- #

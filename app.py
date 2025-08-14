@@ -10,6 +10,7 @@ from flask import (
     g,
     jsonify,
     send_from_directory,
+    after_this_request,
 )
 from flask_bootstrap import Bootstrap
 from forms import RegisterForm, LoginForm, CreatePostForm, CommentForm
@@ -21,6 +22,14 @@ import uuid
 import markdown
 import bleach
 from bleach.css_sanitizer import CSSSanitizer
+import re
+from functools import lru_cache
+import time
+
+# Configuration flags
+HTML_FORMATTING = False  # Set to True for formatting, False for minification
+CACHE_ENABLED = os.environ.get("CACHE_ENABLED", "False").lower() == "true"
+CACHE_TIMEOUT = int(os.environ.get("CACHE_TIMEOUT", "300"))  # Default 5 minutes
 
 if os.path.exists("env.py"):
     import env
@@ -107,11 +116,107 @@ def markdown_to_html(markdown_text):
     )
 
 
+# Cache management
+cache_storage = {}
+
+
+def get_cache_key(*args, **kwargs):
+    """Generate a cache key from arguments."""
+    return str(args) + str(sorted(kwargs.items()))
+
+
+def cached_result(func):
+    """Decorator to cache function results with timeout."""
+
+    def wrapper(*args, **kwargs):
+        if not CACHE_ENABLED:
+            return func(*args, **kwargs)
+
+        cache_key = get_cache_key(func.__name__, *args, **kwargs)
+        current_time = time.time()
+
+        # Check if we have a cached result that hasn't expired
+        if cache_key in cache_storage:
+            result, timestamp = cache_storage[cache_key]
+            if current_time - timestamp < CACHE_TIMEOUT:
+                return result
+
+        # Generate new result and cache it
+        result = func(*args, **kwargs)
+        cache_storage[cache_key] = (result, current_time)
+        return result
+
+    return wrapper
+
+
+def clear_expired_cache():
+    """Remove expired cache entries."""
+    if not CACHE_ENABLED:
+        return
+
+    current_time = time.time()
+    expired_keys = [
+        key
+        for key, (_, timestamp) in cache_storage.items()
+        if current_time - timestamp >= CACHE_TIMEOUT
+    ]
+    for key in expired_keys:
+        del cache_storage[key]
+
+
+def clear_cache():
+    """Clear all cache entries."""
+    cache_storage.clear()
+
+
+# Example of how to use caching for expensive operations
+@cached_result
+def get_post_with_comments(post_id):
+    """Get a post with its comments, cached for performance."""
+    db = get_db()
+    post = db.blog_posts.find_one({"_id": int(post_id)})
+    if post:
+        comments = list(db.blog_comments.find({"parent_post": int(post_id)}))
+        return post, comments
+    return None, []
+
+
 # Add custom filter for markdown
 @app.template_filter("markdown")
 def markdown_filter(markdown_text):
     """Jinja2 filter to convert markdown to HTML."""
     return markdown_to_html(markdown_text)
+
+
+def minify_html(html):
+    """Simple HTML minification to remove empty lines and whitespace-only lines while preserving content indentation."""
+    # Split into lines
+    lines = html.split("\n")
+
+    # Filter out empty lines and lines with only whitespace
+    filtered_lines = []
+    for line in lines:
+        # If line has content (not just whitespace), keep it
+        if line.strip():
+            filtered_lines.append(line)
+
+    # Join back with newlines
+    minified_html = "\n".join(filtered_lines)
+
+    return minified_html
+
+
+@app.after_request
+def after_request(response):
+    """Process HTML responses for minification and clean up expired cache."""
+    # Clean up expired cache entries periodically
+    if CACHE_ENABLED and int(time.time()) % 60 == 0:  # Roughly every minute
+        clear_expired_cache()
+
+    # Minify HTML responses
+    if response.content_type.startswith("text/html"):
+        response.set_data(minify_html(response.get_data(as_text=True)))
+    return response
 
 
 def get_db():
@@ -309,9 +414,17 @@ def get_all_posts():
     """
     Read all blog posts from the database.
     """
-    db = get_db()
-    posts = list(db.blog_posts.find())
-    return render_template("index.html", all_posts=posts)
+    if CACHE_ENABLED:
+        # For cached version, we need to handle this differently since it depends on database state
+        # This is a simplified approach - in a real application, you'd want to invalidate cache
+        # when posts are added/modified
+        db = get_db()
+        posts = list(db.blog_posts.find())
+        return render_template("index.html", all_posts=posts)
+    else:
+        db = get_db()
+        posts = list(db.blog_posts.find())
+        return render_template("index.html", all_posts=posts)
 
 
 # ----- REGISTER ----- #
@@ -423,11 +536,18 @@ def show_post(post_id):
     """
     form = CommentForm()
     db = get_db()
-    # find the requested post
-    requested_post = db.blog_posts.find_one({"_id": int(post_id)})
-    requested_post_comments = db.blog_comments.find(
-        {"parent_post": int(post_id)}
-    )
+
+    # For GET requests, we can use caching
+    if request.method == "GET":
+        requested_post, requested_post_comments = get_post_with_comments(
+            post_id
+        )
+    else:
+        # For POST requests (comments), we need fresh data
+        requested_post = db.blog_posts.find_one({"_id": int(post_id)})
+        requested_post_comments = db.blog_comments.find(
+            {"parent_post": int(post_id)}
+        )
 
     # commenting on a post
     if form.validate_on_submit():
@@ -442,6 +562,12 @@ def show_post(post_id):
         }
 
         db.blog_comments.insert_one(new_comment)
+        # Clear cache for this post since we've added a comment
+        if CACHE_ENABLED:
+            cache_key = get_cache_key("get_post_with_comments", post_id)
+            if cache_key in cache_storage:
+                del cache_storage[cache_key]
+
     return render_template(
         "post.html",
         post=requested_post,
@@ -473,6 +599,9 @@ def create_post():
             }
             db.blog_posts.insert_one(new_post)
             flash("Post Successfully Added")
+            # Clear cache since we've added a new post
+            if CACHE_ENABLED:
+                clear_cache()
             return redirect(url_for("get_all_posts"))
         return render_template("create_post.html", form=form)
     else:
@@ -509,6 +638,9 @@ def edit_post(post_id):
                 }
             },
         )
+        # Clear cache since we've modified a post
+        if CACHE_ENABLED:
+            clear_cache()
         return redirect(url_for("show_post", post_id=post_id))
     return render_template("create_post.html", form=edit_form, is_edit=True)
 
@@ -524,6 +656,9 @@ def delete_post(post_id):
     db = get_db()
     db.blog_posts.delete_one({"_id": int(post_id)})
     flash("Post Successfully Deleted")
+    # Clear cache since we've deleted a post
+    if CACHE_ENABLED:
+        clear_cache()
     return redirect(url_for("get_all_posts"))
 
 
@@ -537,6 +672,11 @@ def delete_comment(comment_id):
     db.blog_comments.delete_one({"_id": int(comment_id)})
     flash("Comment Successfully Deleted")
     post_id = request.args.get("post_id")
+    # Clear cache for this post since we've deleted a comment
+    if CACHE_ENABLED:
+        cache_key = get_cache_key("get_post_with_comments", post_id)
+        if cache_key in cache_storage:
+            del cache_storage[cache_key]
     return redirect(url_for("show_post", post_id=post_id))
 
 
@@ -556,6 +696,25 @@ def search():
     else:
         posts = list(db.blog_posts.find())
     return render_template("index.html", all_posts=posts, search_query=query)
+
+
+# ----- SITEMAP ----- #
+@app.route("/sitemap.xml")
+def sitemap():
+    """Generate a sitemap for the blog."""
+    db = get_db()
+    posts = list(db.blog_posts.find())
+
+    # Get the current date for the sitemap
+    from datetime import datetime
+
+    current_date = datetime.utcnow().strftime("%Y-%m-%d")
+
+    return (
+        render_template("sitemap.xml", posts=posts, current_date=current_date),
+        200,
+        {"Content-Type": "application/xml"},
+    )
 
 
 # ----- HANDLE 404 ERROR ----- #

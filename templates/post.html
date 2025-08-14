@@ -1,6 +1,95 @@
 {% import "bootstrap/wtf.html" as wtf %}
-{% include "header.html" %}
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <!-- META TAGS -->
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+      <meta name="description" content="{{ post.subtitle }} - Posted by {{ post.author }} on {{ post.date }}">
+      <meta name="author" content="{{ post.author }}">
+      
+      <!-- Open Graph / Facebook -->
+      <meta property="og:type" content="article">
+      <meta property="og:url" content="{{ request.url }}">
+      <meta property="og:title" content="{{ post.title }}">
+      <meta property="og:description" content="{{ post.subtitle }} - Posted by {{ post.author }} on {{ post.date }}">
+      <meta property="og:image" content="{{ post.img_url }}">
+      
+      <!-- Twitter -->
+      <meta property="twitter:card" content="summary_large_image">
+      <meta property="twitter:url" content="{{ request.url }}">
+      <meta property="twitter:title" content="{{ post.title }}">
+      <meta property="twitter:description" content="{{ post.subtitle }} - Posted by {{ post.author }} on {{ post.date }}">
+      <meta property="twitter:image" content="{{ post.img_url }}">
 
+      <!-- TITLE | FAVICON -->
+      <title>{{ post.title }} - Medium Bloggy</title>
+      <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.jpg')}}">
+      
+      <!-- Canonical URL -->
+      <link rel="canonical" href="{{ request.url }}">
+
+       <!-- CSS -->
+      <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+         integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous"/>
+      <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.1/css/all.css"
+         integrity="sha384-gfdkjb5BdAXd+lj+gudLWI+BXq4IuLW5IT+brZEZsLFm++aCMlF1V92rMkPaX4PP" crossorigin="anonymous">
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
+
+       <!-- CUSTOM STYLE -->
+      <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
+   </head>
+   <body>
+
+      <!-- NAVIGATION -->
+      <header>
+         <nav class="navbar navbar-expand-md navbar-light fixed-top bg-light">
+            <a class="navbar-brand mb-0 h1" href="{{url_for('get_all_posts')}}"><img src="/static/img/logo.png" alt=""
+               loading="lazy"></a>
+            <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+               data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false"
+               aria-label="Toggle navigation"><i class="fas fa-bars"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarResponsive">
+               <ul class="navbar-nav ml-auto">
+                  <form class="form-inline my-2 my-lg-0" action="{{ url_for('search') }}" method="POST">
+                     <input class="form-control mr-sm-2 search-button-margin" type="search" name="query" placeholder="Search all posts..." value="{{ search_query or '' }}"
+                        aria-label="Search">
+                     <button class="btn btn-dark ml-1" type="submit">Search</button>
+                     <a class="btn btn-outline-info ml-1" href="{{ url_for('get_all_posts') }}"
+                        role="button">Reset</a>
+                  </form>
+                  {% if not session.user %}
+                  <li class="nav-item">
+                     <a class="nav-link" href="{{ url_for('login') }}">Sign In</a>
+                     <span class="sr-only">(current)</span>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{{ url_for('register') }}">Get Started</a>
+                     <span class="sr-only">(current)</span>
+                  </li>
+                  {% else: %}
+                  <li class="nav-item">
+                     <a class="nav-link" href="{{ url_for('create_post') }}">Write</a>
+                     <span class="sr-only">(current)</span>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{{ url_for('upload_image') }}">Upload Image</a>
+                     <span class="sr-only">(current)</span>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{{ url_for('logout') }}">Log Out</a>
+                     <span class="sr-only">(current)</span>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{{ url_for('profile', username=session['user']) }}">Profile</a>
+                     <span class="sr-only">(current)</span>
+                  </li>
+                  {% endif %}
+               </ul>
+            </div>
+         </nav>
+      </header>
 <!-- PAGE HEADER -->
 <header class="masthead" style="background-image: url('{{ post.img_url }}')">
    <div class="overlay"></div>
@@ -275,4 +364,59 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <br>
 <hr>
-{% include "footer.html" %}
+<!-- FOOTER -->
+<footer>
+   <div class="container">
+      <div class="row">
+         <div class="col-lg-8 col-md-10 mx-auto">
+            <ul class="list-inline text-center">
+               <li class="list-inline-item">
+                  <a href="https://twitter.com/">
+                  <span class="fa-stack fa-lg">
+                  <i class="fas fa-circle fa-stack-2x"></i>
+                  <i class="fab fa-twitter fa-stack-1x fa-inverse"></i>
+                  </span>
+                  </a>
+               </li>
+               <li class="list-inline-item">
+                  <a href="https://www.facebook.com/">
+                  <span class="fa-stack fa-lg">
+                  <i class="fas fa-circle fa-stack-2x"></i>
+                  <i class="fab fa-facebook-f fa-stack-1x fa-inverse"></i>
+                  </span>
+                  </a>
+               </li>
+               <li class="list-inline-item">
+                  <a href="https://github.com/">
+                  <span class="fa-stack fa-lg">
+                  <i class="fas fa-circle fa-stack-2x"></i>
+                  <i class="fab fa-github fa-stack-1x fa-inverse"></i>
+                  </span>
+                  </a>
+               </li>
+            </ul>
+            <!-- Quote -->
+            <div class="quote-text text-center mt-5">
+            <i class="fas fa-quote-left"></i>
+            <span id="quote" class="quote-text"></span><span id="author" class="quote-author"></span>
+            </div>
+            <p class="copyright text-muted">
+               Copyright &copy; Medium Bloggy <script>document.write(new Date().getFullYear());</script>
+               | <a href="/sitemap.xml">Sitemap</a>
+            </p>
+         </div>
+      </div>
+   </div>
+</footer>
+<!-- JQUERY, POPPER.JS, BOOTSTRAP.JS-->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+   integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
+   integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
+   integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+  <!-- Custom script for random quote generation -->
+  <script src="{{ url_for('static', filename='js/script.js')}}"></script>
+</body>
+</html>

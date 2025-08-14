@@ -5,10 +5,28 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
       <meta name="description" content="Blogging Ireland; journalism">
+      <meta name="author" content="Medium Bloggy">
+      
+      <!-- Open Graph / Facebook -->
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="{{ request.url }}">
+      <meta property="og:title" content="Medium Bloggy">
+      <meta property="og:description" content="Blogging Ireland; journalism">
+      <meta property="og:image" content="{{ url_for('static', filename='img/logo.png', _external=True) }}">
+      
+      <!-- Twitter -->
+      <meta property="twitter:card" content="summary_large_image">
+      <meta property="twitter:url" content="{{ request.url }}">
+      <meta property="twitter:title" content="Medium Bloggy">
+      <meta property="twitter:description" content="Blogging Ireland; journalism">
+      <meta property="twitter:image" content="{{ url_for('static', filename='img/logo.png', _external=True) }}">
 
       <!-- TITLE | FAVICON -->
       <title>Medium Bloggy</title>
-      <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.jpg')}}"/>
+      <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.jpg')}}">
+      
+      <!-- Canonical URL -->
+      <link rel="canonical" href="{{ request.url }}">
 
        <!-- CSS -->
       <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"

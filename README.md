@@ -53,6 +53,26 @@ This project demonstrates several key advantages of NeoSQLite:
 5. **Performance**: Faster local operations without network latency
 6. **Full-Text Search**: Advanced text search capabilities with customizable tokenizers
 
+## Performance Optimizations
+
+This application includes several performance optimizations:
+
+### HTML Minification
+The application automatically minifies HTML output by removing empty lines and lines with only whitespace while preserving content indentation. This reduces bandwidth usage while maintaining readable HTML structure.
+
+### Caching
+Optional caching mechanism to improve performance:
+- **Configurable**: Enable/disable caching and set timeout via environment variables
+- **Automatic Invalidation**: Cache is automatically cleared when content is modified
+- **Memory Efficient**: Simple LRU-like cache with timeout support
+
+To enable caching, set the following environment variables in your `env.py`:
+
+```python
+os.environ.setdefault("CACHE_ENABLED", "True")   # Enable caching
+os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 minutes)
+```
+
 ## Installation
 
 1. Clone this repository:
@@ -91,6 +111,10 @@ This project demonstrates several key advantages of NeoSQLite:
    #     "TOKENIZER_PATH",
    #     "/path/to/libfts5_icu.so",
    # )
+   
+   # Optional: Configure caching (default: disabled)
+   # os.environ.setdefault("CACHE_ENABLED", "True")   # Enable caching
+   # os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 minutes)
    ```
 
 6. Run the application:

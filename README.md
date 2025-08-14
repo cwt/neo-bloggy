@@ -21,16 +21,17 @@ We've modified this project to work with NeoSQLite, demonstrating that NeoSQLite
 
 ### Front-End Technologies
 - HTML5
-- CSS3 (Bootstrap)
+- CSS3 (Bootstrap 5.3)
 - JavaScript
 - Google Fonts (Lora and Open Sans)
+- Font Awesome 6.5
 
 ### Back-End Technologies
 - Python 3.x
-- Flask
+- Flask 3.1
 - NeoSQLite 0.3.5
-- Flask-WTF
-- Flask-Bootstrap
+- Flask-Bootstrap5 5.3.3
+- Flask-WTF 1.2.2
 
 ## Features
 
@@ -52,6 +53,26 @@ This project demonstrates several key advantages of NeoSQLite:
 4. **Query Operators**: Support for MongoDB-style query operators including `$or`, `$contains`, etc.
 5. **Performance**: Faster local operations without network latency
 6. **Full-Text Search**: Advanced text search capabilities with customizable tokenizers
+
+## Modern Features (2025)
+
+This application includes several modern web development features:
+
+### Bootstrap 5.3
+- Updated from Bootstrap 4 to the latest Bootstrap 5.3
+- Modern CSS framework with improved components and utilities
+- Better responsive design capabilities
+
+### Dark Mode Support
+- User preference-based dark/light mode toggle
+- System preference detection (prefers-color-scheme)
+- Persistent theme selection using localStorage
+- Custom CSS variables for consistent styling
+
+### Performance Optimizations
+- HTML minification to reduce bandwidth usage
+- Optional caching mechanism for improved response times
+- Modern dependency versions for better security and performance
 
 ## Performance Optimizations
 

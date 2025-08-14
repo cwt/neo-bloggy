@@ -12,7 +12,7 @@ from flask import (
     send_from_directory,
     after_this_request,
 )
-from flask_bootstrap import Bootstrap
+from flask_bootstrap5 import Bootstrap
 from forms import RegisterForm, LoginForm, CreatePostForm, CommentForm
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename

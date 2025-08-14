@@ -1,4 +1,3 @@
-{% import "bootstrap/wtf.html" as wtf %}
 {% include "header.html" %}
 
 <main role="main">
@@ -61,8 +60,7 @@
       <div class="modal-content">
          <div class="modal-header">
             <h5 class="modal-title">Select an Image</h5>
-            <button type="button" class="close" data-dismiss="modal">
-               <span>&times;</span>
+            <button type="button" class="btn-close" data-bs-dismiss="modal">
             </button>
          </div>
          <div class="modal-body">
@@ -75,7 +73,7 @@
             </div>
          </div>
          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
          </div>
       </div>
    </div>
@@ -254,8 +252,9 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         
-        // Show modal
-        $('#imageBrowserModal').modal('show');
+        // Show modal using Bootstrap 5 JavaScript
+        var modal = new bootstrap.Modal(document.getElementById('imageBrowserModal'));
+        modal.show();
         
         // Load images from API
         fetch('/api/images')
@@ -291,8 +290,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to select an image
     window.selectImage = function(url, name) {
-        // Close modal
-        $('#imageBrowserModal').modal('hide');
+        // Close modal using Bootstrap 5 JavaScript
+        var modal = bootstrap.Modal.getInstance(document.getElementById('imageBrowserModal'));
+        if (modal) {
+            modal.hide();
+        }
         
         // Check if we're selecting a cover image or inserting into editor
         if (window.selectingCoverImage) {

@@ -140,7 +140,7 @@ html {
 /*------------------------------------*\ #JUMBOTRON \*------------------------------------*/
  .jumbotron {
      background-size: cover;
-     min-height: 450px;
+     min-height: 200px;
 }
  .main-jumbotron {
      background-image: url("/static/img/background.jpg");
@@ -154,20 +154,21 @@ html {
  .write-jumbotron {
      background: url("/static/img/create.jpg") no-repeat center center;
 }
- .jumbotron {
-     background-size: cover;
-     min-height: 450px;
-}
  .profile-jumbotron {
      background: url("/static/img/signup.jpg") no-repeat center center;
      background-size: cover;
-     min-height: 100px;
+     min-height: 100px !important;
 }
  .create-post-heading {
      margin-top: 6rem;
 }
  .profile-name {
      margin-top: 2rem;
+}
+
+ .create-post-heading, .profile-name, .login-jumbotron .display-2, .signup-jumbotron .display-2 {
+    font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-weight: 600;
 }
 /*------------------------------------*\ #MASTHEAD FOR POSTS \*------------------------------------*/
  header.masthead {
@@ -188,7 +189,7 @@ html {
      opacity: 0.5;
 }
  header.masthead .page-heading, header.masthead .post-heading, header.masthead .site-heading {
-     padding: 200px 0 150px;
+     padding: 100px 0 75px;
      color: white;
 }
  header.masthead .page-heading, header.masthead .site-heading {
@@ -197,6 +198,7 @@ html {
  header.masthead .page-heading h1, header.masthead .site-heading h1 {
      font-size: 50px;
      margin-top: 0;
+     font-weight: 300;
 }
  header.masthead .page-heading .subheading, header.masthead .site-heading .subheading {
      font-size: 24px;
@@ -221,7 +223,7 @@ html {
 }
  header.masthead .post-heading .meta {
      font-size: 20px;
-     font-weight: 300;
+     font-weight: 600;
      font-style: italic;
      font-family: 'Lora', 'Times New Roman', serif;
 }

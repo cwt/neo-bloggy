@@ -205,7 +205,7 @@
       <div class="modal-content">
          <div class="modal-header">
             <h5 class="modal-title">Select an Image</h5>
-            <button type="button" class="close" data-dismiss="modal">
+            <button type="button" class="close" data-bs-dismiss="modal">
                <span>&times;</span>
             </button>
          </div>
@@ -219,7 +219,7 @@
             </div>
          </div>
          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
          </div>
       </div>
    </div>
@@ -306,7 +306,8 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         // Show modal
-        $('#imageBrowserModal').modal('show');
+        var imageBrowserModal = new bootstrap.Modal(document.getElementById('imageBrowserModal'));
+        imageBrowserModal.show();
         
         // Load images from API
         fetch('/api/images')
@@ -343,7 +344,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to select an image
     window.selectImage = function(url, name) {
         // Close modal
-        $('#imageBrowserModal').modal('hide');
+        var imageBrowserModal = bootstrap.Modal.getInstance(document.getElementById('imageBrowserModal'));
+        imageBrowserModal.hide();
         
         // Insert image into editor if we have a reference
         if (window.currentEditor) {

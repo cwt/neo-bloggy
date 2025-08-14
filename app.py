@@ -98,6 +98,9 @@ def get_db():
     """Get database connection for the current request."""
     if "db" not in g:
         g.db = neosqlite.Connection(DB_PATH)
+        # Create FTS indexes for blog posts if they don't exist
+        g.db.blog_posts.create_index("title", fts=True)
+        g.db.blog_posts.create_index("subtitle", fts=True)
     return g.db
 
 
@@ -516,19 +519,11 @@ def search():
     """
     db = get_db()
     query = request.form.get("query")
-    # For neosqlite, we'll use the $contains operator for case-insensitive substring search
+    # For neosqlite, we'll use the $text operator with FTS for efficient text search
     if query:
-        # Use neosqlite's $contains with $or for efficient SQL-level search
-        posts = list(
-            db.blog_posts.find(
-                {
-                    "$or": [
-                        {"title": {"$contains": query}},
-                        {"subtitle": {"$contains": query}},
-                    ]
-                }
-            )
-        )
+        # Use neosqlite's $text with $search for FTS-based search
+        # This will search across all FTS-indexed fields (title and subtitle)
+        posts = list(db.blog_posts.find({"$text": {"$search": query}}))
     else:
         posts = list(db.blog_posts.find())
     return render_template("index.html", all_posts=posts)

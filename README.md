@@ -28,7 +28,7 @@ We've modified this project to work with NeoSQLite, demonstrating that NeoSQLite
 ### Back-End Technologies
 - Python 3.x
 - Flask
-- NeoSQLite 0.3.2
+- NeoSQLite 0.3.5
 - Flask-WTF
 - Flask-Bootstrap
 
@@ -51,6 +51,7 @@ This project demonstrates several key advantages of NeoSQLite:
 3. **Document Storage**: Native support for JSON-like documents
 4. **Query Operators**: Support for MongoDB-style query operators including `$or`, `$contains`, etc.
 5. **Performance**: Faster local operations without network latency
+6. **Full-Text Search**: Advanced text search capabilities with customizable tokenizers
 
 ## Installation
 
@@ -83,6 +84,13 @@ This project demonstrates several key advantages of NeoSQLite:
    os.environ.setdefault("IP", "127.0.0.1")
    os.environ.setdefault("PORT", "5000")
    os.environ.setdefault("DB_PATH", "medium-bloggy.db")  # Optional, defaults to medium-bloggy.db
+   
+   # Optional: Configure custom FTS5 tokenizer (NeoSQLite v0.3.5+)
+   # os.environ.setdefault("TOKENIZER_NAME", "icu")
+   # os.environ.setdefault(
+   #     "TOKENIZER_PATH",
+   #     "/path/to/libfts5_icu.so",
+   # )
    ```
 
 6. Run the application:

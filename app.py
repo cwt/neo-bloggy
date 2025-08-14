@@ -42,6 +42,8 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 # Database configuration
 DB_PATH = os.environ.get("DB_PATH", "/tmp/neosqlite.db")
+TOKENIZER_NAME = os.environ.get("TOKENIZER_NAME", None)
+TOKENIZER_PATH = os.environ.get("TOKENIZER_PATH", None)
 
 
 def allowed_file(filename):
@@ -115,10 +117,19 @@ def markdown_filter(markdown_text):
 def get_db():
     """Get database connection for the current request."""
     if "db" not in g:
-        g.db = neosqlite.Connection(DB_PATH)
+        g.db = neosqlite.Connection(
+            DB_PATH,
+            tokenizers=[
+                (TOKENIZER_NAME, TOKENIZER_PATH)
+            ],  # Tokenizers can be more than one.
+        )
         # Create FTS indexes for blog posts if they don't exist
-        g.db.blog_posts.create_index("title", fts=True)
-        g.db.blog_posts.create_index("subtitle", fts=True)
+        g.db.blog_posts.create_index(
+            "title", fts=True, tokenizer=TOKENIZER_NAME
+        )
+        g.db.blog_posts.create_index(
+            "subtitle", fts=True, tokenizer=TOKENIZER_NAME
+        )
     return g.db
 
 

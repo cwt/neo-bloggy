@@ -289,6 +289,33 @@ document.addEventListener('DOMContentLoaded', function() {
             cm.replaceSelection(output);
         }
     };
+
+    // Add copy buttons to code blocks
+    document.querySelectorAll('pre code').forEach(function(codeBlock) {
+        var button = document.createElement('button');
+        button.className = 'copy-code-button';
+        button.type = 'button';
+        button.innerText = 'Copy';
+
+        button.addEventListener('click', function() {
+            navigator.clipboard.writeText(codeBlock.innerText).then(function() {
+                button.innerText = 'Copied!';
+                setTimeout(function() {
+                    button.innerText = 'Copy';
+                }, 2000);
+            }, function(err) {
+                console.error('Could not copy text: ', err);
+            });
+        });
+
+        var pre = codeBlock.parentNode;
+        if (pre.parentNode.classList.contains('highlight')) {
+            var highlight = pre.parentNode;
+            highlight.insertBefore(button, highlight.firstChild);
+        } else {
+            pre.parentNode.insertBefore(button, pre);
+        }
+    });
 });
 </script>
 

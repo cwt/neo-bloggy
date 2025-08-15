@@ -5,10 +5,12 @@
          <h1 class="display-2">Where good ideas find you.</h1>
          <hr class="my-4">
          <p>Read and share new perspectives on any topic.</p>
+         {% if not session.user %}
          <a class="nav-link" href="{{ url_for('register') }}">
             <div class="btn btn-dark btn-sm rounded-pill">Get Started</div>
             <span class="sr-only"></span>
          </a>
+         {% endif %}
       </div>
    </div>
    <!-- POST CARD-CONTENT -->

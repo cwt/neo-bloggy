@@ -145,7 +145,11 @@ html {
 /*------------------------------------*\ #JUMBOTRON \*------------------------------------*/
  .jumbotron {
      background-size: cover;
-     min-height: 200px;
+     min-height: 300px;
+     display: flex;
+     align-items: center;
+     color: white;
+     text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
 }
  .main-jumbotron {
      background-image: url("/static/img/background.jpg");
@@ -162,18 +166,6 @@ html {
  .profile-jumbotron {
      background: url("/static/img/signup.jpg") no-repeat center center;
      background-size: cover;
-     min-height: 100px !important;
-}
- .create-post-heading {
-     margin-top: 6rem;
-}
- .profile-name {
-     margin-top: 2rem;
-}
-
- .create-post-heading, .profile-name, .login-jumbotron .display-2, .signup-jumbotron .display-2 {
-    font-family: 'IBM Plex Sans Thai Looped', sans-serif;
-    font-weight: 600;
 }
 /*------------------------------------*\ #MASTHEAD FOR POSTS \*------------------------------------*/
  header.masthead {

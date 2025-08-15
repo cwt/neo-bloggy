@@ -1,19 +1,13 @@
 {% include "header.html" %}
 <!-- PAGE HEADER -->
-<header class="masthead" style="background-image: url('{{ post.img_url }}')">
-   <div class="overlay"></div>
+<div class="jumbotron" style="background-image: url('{{ post.img_url }}'); background-size: cover;">
    <div class="container">
-      <div class="row">
-         <div class="col-lg-8 col-md-10 mx-auto">
-            <div class="post-heading">
-               <h1>{{ post.title }}</h1>
-               <h2 class="subheading">{{ post.subtitle }}</h2>
-               <span class="meta">Posted by {{ post.author }} on {{ post.date }}</span>
-            </div>
-         </div>
-      </div>
+      <h1 class="display-2">{{ post.title }}</h1>
+      <hr class="my-4">
+      <p>{{ post.subtitle }}</p>
+      <p class="meta">Posted by {{ post.author }} on {{ post.date }}</p>
    </div>
-</header>
+</div>
 
 <!-- POST CONTENT -->
 <article>

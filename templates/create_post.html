@@ -1,14 +1,15 @@
 {% include "header.html" %}
 
 <main role="main">
-   <div class="jumbotron write-jumbotron text-center">
-      <div class="page-heading mt-5">
+   <div class="jumbotron write-jumbotron">
+      <div class="container">
          {% if is_edit: %}
-         <h1 class="create-post-heading">Edit Post</h1>
+         <h1 class="display-2">Edit Post</h1>
          {% else: %}
-         <h1 class="create-post-heading" >New Post</h1>
+         <h1 class="display-2" >New Post</h1>
          {% endif %}
-         <span class="subheading">Lets get creative!</span>
+         <hr class="my-4">
+         <p>Lets get creative!</p>
       </div>
    </div>
    <div class="container">

@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
             element: document.getElementById('body'),
             autosave: {
                 enabled: true,
-                uniqueId: "{{ 'body_' + post._id if is_edit else 'new_post_body' }}",
+                uniqueId: "{{ 'body_' + post._id|string if is_edit else 'new_post_body' }}",
                 delay: 1000,
             },
             forceSync: true,

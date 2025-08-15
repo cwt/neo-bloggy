@@ -1,0 +1,71 @@
+{% include "header.html" %}
+
+<main role="main">
+   <div class="jumbotron profile-jumbotron">
+      <div class="container">
+         <h1 class="display-2">Edit Profile</h1>
+         <hr class="my-4">
+         <p>Update your account details.</p>
+      </div>
+   </div>
+   <div class="container">
+      <div class="row">
+         <div class="col-lg-8 col-md-10 mx-auto">
+            <form method="POST">
+               {{ form.hidden_tag() }}
+               <div class="form-group">
+                  {{ form.name.label(class="form-label") }}
+                  {{ form.name(class="form-control") }}
+                  {% if form.name.errors %}
+                     <div class="text-danger">
+                        {% for error in form.name.errors %}
+                           <small>{{ error }}</small>
+                        {% endfor %}
+                     </div>
+                  {% endif %}
+               </div>
+               <div class="form-group">
+                  {{ form.email.label(class="form-label") }}
+                  {{ form.email(class="form-control") }}
+                  {% if form.email.errors %}
+                     <div class="text-danger">
+                        {% for error in form.email.errors %}
+                           <small>{{ error }}</small>
+                        {% endfor %}
+                     </div>
+                  {% endif %}
+               </div>
+               <div class="form-group">
+                  {{ form.password.label(class="form-label") }}
+                  {{ form.password(class="form-control") }}
+                  {% if form.password.errors %}
+                     <div class="text-danger">
+                        {% for error in form.password.errors %}
+                           <small>{{ error }}</small>
+                        {% endfor %}
+                     </div>
+                  {% endif %}
+               </div>
+               <div class="form-group">
+                  {{ form.confirm.label(class="form-label") }}
+                  {{ form.confirm(class="form-control") }}
+                  {% if form.confirm.errors %}
+                     <div class="text-danger">
+                        {% for error in form.confirm.errors %}
+                           <small>{{ error }}</small>
+                        {% endfor %}
+                     </div>
+                  {% endif %}
+               </div>
+               <div class="form-group">
+                  {{ form.submit(class="btn btn-primary") }}
+               </div>
+            </form>
+         </div>
+      </div>
+   </div>
+</main>
+
+<br>
+<hr>
+{% include "footer.html" %}

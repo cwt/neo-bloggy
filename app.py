@@ -39,7 +39,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY")
 bootstrap = Bootstrap5(app)
 
-from forms import RegisterForm, LoginForm, CreatePostForm, CommentForm
+from forms import RegisterForm, LoginForm, CreatePostForm, CommentForm, EditProfileForm
 
 # Configure file upload settings
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads")
@@ -522,7 +522,7 @@ def login():
             return redirect(url_for("login"))
         else:
             session["user"] = existing_user["name"]
-            flash(f"Welcome Back, {existing_user['name'].capitalize()}")
+            flash(f"Welcome Back, {existing_user['name'].title()}")
             return redirect(url_for("profile", username=session["user"]))
     return render_template("login.html", form=form)
 
@@ -544,6 +544,46 @@ def profile(username):
         return render_template("profile.html", username=username, posts=posts)
     # if not logged in, return to login page
     return redirect(url_for("login"))
+
+
+# ----- EDIT PROFILE ----- #
+@app.route("/edit-profile", methods=["GET", "POST"])
+def edit_profile():
+    """
+    Edit the user's profile.
+    """
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    db = get_db()
+    user = db.users.find_one({"name": session["user"]})
+    form = EditProfileForm(obj=user)
+
+    if form.validate_on_submit():
+        # Check if the new email already exists
+        if form.email.data != user["email"]:
+            if db.users.find_one({"email": form.email.data}):
+                flash("That email is already in use.", "error")
+                return render_template("edit_profile.html", form=form)
+
+        update_data = {
+            "name": form.name.data,
+            "email": form.email.data,
+        }
+        if form.password.data:
+            update_data["password"] = generate_password_hash(
+                form.password.data, method="pbkdf2:sha256", salt_length=8
+            )
+
+        db.users.update_one({"_id": user["_id"]}, {"$set": update_data})
+        session["user"] = form.name.data  # Update session with new name
+        flash("Profile updated successfully!")
+        return redirect(url_for("profile", username=session["user"]))
+    elif request.method == "GET":
+        form.name.data = user["name"]
+        form.email.data = user["email"]
+
+    return render_template("edit_profile.html", form=form)
 
 
 # ----- LOGOUT ----- #

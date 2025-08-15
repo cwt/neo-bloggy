@@ -23,7 +23,7 @@ We've modified this project to work with NeoSQLite, demonstrating that NeoSQLite
 - HTML5
 - CSS3 (Bootstrap 5.3)
 - JavaScript (Cash.js for DOM manipulation)
-- Google Fonts (Lora and Open Sans)
+- Google Fonts (IBM Plex)
 - Font Awesome 6.5
 
 ### Back-End Technologies

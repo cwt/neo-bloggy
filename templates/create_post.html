@@ -109,6 +109,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 delay: 1000,
             },
             forceSync: true,
+            spellChecker: false,
+            previewRender: function(plainText, preview) {
+                setTimeout(function() {
+                    preview.innerHTML = this.parent.markdown(plainText);
+                    hljs.highlightAll();
+                }.bind(this), 1);
+                return "Loading...";
+            },
             toolbar: [
                 "bold", "italic", "heading", "|",
                 "quote", "unordered-list", "ordered-list", "|",
@@ -177,6 +185,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('comment_text')) {
         var commentMde = new SimpleMDE({
             element: document.getElementById('comment_text'),
+            spellChecker: false,
+            previewRender: function(plainText, preview) {
+                setTimeout(function() {
+                    preview.innerHTML = this.parent.markdown(plainText);
+                    hljs.highlightAll();
+                }.bind(this), 1);
+                return "Loading...";
+            },
             toolbar: [
                 "bold", "italic", "heading", "|",
                 "quote", "unordered-list", "ordered-list", "|",

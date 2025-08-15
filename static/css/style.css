@@ -52,29 +52,32 @@ html {
  .commentList {
      padding: 0;
      list-style: none;
-     max-height: 200px;
-     overflow: auto;
 }
  .commentList li {
+     display: flex;
+     align-items: flex-start;
      margin: 0;
      margin-top: 10px;
 }
- .commentList li > div {
-     display: table-cell;
-}
  .commenterImage {
      width: 30px;
-     margin-right: 5px;
-     height: 100%;
-     float: left;
+     margin-right: 10px;
+     flex-shrink: 0;
 }
- .commenterImage img {
+ .commenterImage i {
      width: 100%;
      border-radius: 50%;
 }
+ .commentText {
+    flex-grow: 1;
+ }
  .commentText p {
      margin: 0;
 }
+ .comment-meta {
+    text-align: right;
+    margin-top: 10px;
+ }
  .sub-text {
      color: #aaa;
      font-family: 'IBM Plex Sans Thai Looped', sans-serif;

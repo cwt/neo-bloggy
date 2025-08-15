@@ -13,7 +13,6 @@ from flask import (
     after_this_request,
 )
 from flask_bootstrap import Bootstrap5
-from forms import RegisterForm, LoginForm, CreatePostForm, CommentForm
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import date
@@ -39,6 +38,8 @@ app = Flask(__name__)
 
 app.secret_key = os.environ.get("SECRET_KEY")
 bootstrap = Bootstrap5(app)
+
+from forms import RegisterForm, LoginForm, CreatePostForm, CommentForm
 
 # Configure file upload settings
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads")
@@ -415,7 +416,7 @@ def upload_image():
         )
         # Limit to last 12 files
         image_files = image_files[:12]
-    except:
+    except Exception:
         image_files = []
 
     return render_template("upload.html", uploaded_files=image_files)
@@ -585,6 +586,7 @@ def show_post(post_id):
             cache_key = get_cache_key("get_post_with_comments", post_id)
             if cache_key in cache_storage:
                 del cache_storage[cache_key]
+        return redirect(url_for("show_post", post_id=post_id))
 
     return render_template(
         "post.html",
@@ -737,19 +739,19 @@ def sitemap():
 
 # ----- HANDLE 404 ERROR ----- #
 @app.errorhandler(404)
-def page_not_found(e):
+def page_not_found_404(e):
     return render_template("404.html"), 404
 
 
 # ----- HANDLE 403 ERROR ----- #
 @app.errorhandler(403)
-def page_not_found(e):
+def page_not_found_403(e):
     return render_template("403.html"), 403
 
 
 # ----- HANDLE 500 ERROR ----- #
 @app.errorhandler(500)
-def page_not_found(e):
+def page_not_found_500(e):
     return render_template("500.html"), 500
 
 

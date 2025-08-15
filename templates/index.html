@@ -12,35 +12,37 @@
       </div>
    </div>
    <!-- POST CARD-CONTENT -->
-   <div class="row card-margin">
-      <div class="container">
-         {% if all_posts|length > 0 %}
-         {% for post in all_posts %}
-         <div class="card mb-3">
-            <div class="row no-gutters">
-               <div class="col-md-4">
-                  <img src="{{ post.img_url }}" class="card-img" alt="{{ post.title }}">
-               </div>
-               <div class="col-md-8">
-                  <div class="card-body">
-                     <a href="{{ url_for('show_post', post_id=post._id) }}">
-                        <h5 class="card-title">{{post.title}}</h5>
-                        <p class="card-text">{{ post.subtitle }}</p>
-                     </a>
-                     <p class="card-text"><small class="text-muted">{{post.date}} posted by
-                        {{post.author}}</small>
-                     </p>
+   <div class="container">
+      <div class="row card-margin">
+         <div class="container">
+            {% if all_posts|length > 0 %}
+            {% for post in all_posts %}
+            <div class="card mb-3">
+               <div class="row no-gutters">
+                  <div class="col-md-4">
+                     <img src="{{ post.img_url }}" class="card-img" alt="{{ post.title }}">
+                  </div>
+                  <div class="col-md-8">
+                     <div class="card-body">
+                        <a href="{{ url_for('show_post', post_id=post._id) }}">
+                           <h5 class="card-title">{{post.title}}</h5>
+                           <p class="card-text">{{ post.subtitle }}</p>
+                        </a>
+                        <p class="card-text"><small class="text-muted">{{post.date}} posted by
+                           {{post.author}}</small>
+                        </p>
+                     </div>
                   </div>
                </div>
             </div>
+            {% endfor %}
+            {% else %}
+            {% if search_query %}
+            <h3 class="text-center">No Results Found</h3>
+            <hr>
+            {% endif %}
+            {% endif %}
          </div>
-         {% endfor %}
-         {% else %}
-         {% if search_query %}
-         <h3 class="text-center">No Results Found</h3>
-         <hr>
-         {% endif %}
-         {% endif %}
       </div>
    </div>
 </main>

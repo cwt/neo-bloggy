@@ -265,6 +265,19 @@ def close_db(error):
         g.pop("db", None)
 
 
+@app.context_processor
+def inject_site_details():
+    """Inject site details into all templates."""
+    return {
+        "site_title": os.environ.get("SITE_TITLE", "Medium Bloggy"),
+        "site_author": os.environ.get("SITE_AUTHOR", "Medium Bloggy"),
+        "site_description": os.environ.get(
+            "SITE_DESCRIPTION", "Blogging Ireland; journalism"
+        ),
+    }
+
+
+
 # ---------------- #
 #   FILE UPLOAD    #
 # ---------------- #

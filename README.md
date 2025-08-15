@@ -136,6 +136,11 @@ os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 mi
    # Optional: Configure caching (default: disabled)
    # os.environ.setdefault("CACHE_ENABLED", "True")   # Enable caching
    # os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 minutes)
+
+   # Optional: Configure site-wide meta tags
+   # os.environ.setdefault("SITE_TITLE", "Medium Bloggy")
+   # os.environ.setdefault("SITE_AUTHOR", "Medium Bloggy")
+   # os.environ.setdefault("SITE_DESCRIPTION", "Blogging Ireland; journalism")
    ```
 
 6. Run the application:

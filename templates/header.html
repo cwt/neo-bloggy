@@ -4,25 +4,25 @@
       <!-- META TAGS -->
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-      <meta name="description" content="Blogging Ireland; journalism">
-      <meta name="author" content="Medium Bloggy">
+      <meta name="description" content="{{ site_description }}">
+      <meta name="author" content="{{ site_author }}">
       
       <!-- Open Graph / Facebook -->
       <meta property="og:type" content="website">
       <meta property="og:url" content="{{ request.url }}">
-      <meta property="og:title" content="Medium Bloggy">
-      <meta property="og:description" content="Blogging Ireland; journalism">
+      <meta property="og:title" content="{{ site_title }}">
+      <meta property="og:description" content="{{ site_description }}">
       <meta property="og:image" content="{{ url_for('static', filename='img/logo.png', _external=True) }}">
       
       <!-- Twitter -->
       <meta property="twitter:card" content="summary_large_image">
       <meta property="twitter:url" content="{{ request.url }}">
-      <meta property="twitter:title" content="Medium Bloggy">
-      <meta property="twitter:description" content="Blogging Ireland; journalism">
+      <meta property="twitter:title" content="{{ site_title }}">
+      <meta property="twitter:description" content="{{ site_description }}">
       <meta property="twitter:image" content="{{ url_for('static', filename='img/logo.png', _external=True) }}">
 
       <!-- TITLE | FAVICON -->
-      <title>Medium Bloggy</title>
+      <title>{{ site_title }}</title>
       <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.jpg')}}">
       
       <!-- Canonical URL -->

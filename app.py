@@ -675,7 +675,7 @@ def edit_post(post_id):
         if CACHE_ENABLED:
             clear_cache()
         return redirect(url_for("show_post", post_id=post_id))
-    return render_template("create_post.html", form=edit_form, is_edit=True)
+    return render_template("create_post.html", form=edit_form, is_edit=True, post=post)
 
 
 # ----- DELETE A POST BY ID ----- #

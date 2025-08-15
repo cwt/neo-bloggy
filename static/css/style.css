@@ -20,7 +20,7 @@ html {
      text-decoration: underline;
 }
  h1, h2, h3, h4, h5, h6 {
-     font-weight: 800;
+     font-weight: 700;
      font-family: 'IBM Plex Sans Thai Looped', sans-serif;
 }
  a {
@@ -238,7 +238,6 @@ html {
          font-size: 0.6rem;
          text-transform: uppercase;
          border-radius: 10px;
-     font-family: 'IBM Plex Sans Thai Looped', sans-serif;
     }
      header.masthead .post-heading h1 {
          font-size: 2.2rem;

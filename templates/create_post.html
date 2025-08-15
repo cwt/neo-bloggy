@@ -111,12 +111,14 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             forceSync: true,
             spellChecker: false,
-            previewRender: function(plainText, preview) {
+            previewRender: function(plainText) {
+                // Simple markdown rendering without async operations
+                var rendered = this.parent.markdown(plainText);
+                // Apply syntax highlighting after a short delay to ensure DOM is updated
                 setTimeout(function() {
-                    preview.innerHTML = this.parent.markdown(plainText);
                     hljs.highlightAll();
-                }.bind(this), 1);
-                return "Loading...";
+                }, 10);
+                return rendered;
             },
             toolbar: [
                 "bold", "italic", "heading", "|",
@@ -187,12 +189,14 @@ document.addEventListener('DOMContentLoaded', function() {
         var commentMde = new SimpleMDE({
             element: document.getElementById('comment_text'),
             spellChecker: false,
-            previewRender: function(plainText, preview) {
+            previewRender: function(plainText) {
+                // Simple markdown rendering without async operations
+                var rendered = this.parent.markdown(plainText);
+                // Apply syntax highlighting after a short delay to ensure DOM is updated
                 setTimeout(function() {
-                    preview.innerHTML = this.parent.markdown(plainText);
                     hljs.highlightAll();
-                }.bind(this), 1);
-                return "Loading...";
+                }, 10);
+                return rendered;
             },
             toolbar: [
                 "bold", "italic", "heading", "|",

@@ -78,6 +78,9 @@ html {
     text-align: right;
     margin-top: 10px;
  }
+ .upload-meta {
+     text-align: right;
+ }
  .sub-text {
      color: #aaa;
      font-family: 'IBM Plex Sans Thai Looped', sans-serif;

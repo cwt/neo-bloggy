@@ -161,7 +161,8 @@ html {
      background: url("/static/img/signup.jpg") no-repeat center center;
 }
  .write-jumbotron {
-     background: url("/static/img/create.jpg") no-repeat center center;
+     background: url("/static/img/old-camera-lens-toys-hobbies.jpg") no-repeat center center;
+     background-size: cover;
 }
  .profile-jumbotron {
      background: url("/static/img/signup.jpg") no-repeat center center;

@@ -36,8 +36,10 @@
          </div>
          {% endfor %}
          {% else %}
+         {% if search_query %}
          <h3 class="text-center">No Results Found</h3>
          <hr>
+         {% endif %}
          {% endif %}
       </div>
    </div>

@@ -12,7 +12,7 @@ from flask import (
     send_from_directory,
     after_this_request,
 )
-from flask_bootstrap5 import Bootstrap
+from flask_bootstrap import Bootstrap5
 from forms import RegisterForm, LoginForm, CreatePostForm, CommentForm
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -25,6 +25,7 @@ from bleach.css_sanitizer import CSSSanitizer
 import re
 from functools import lru_cache
 import time
+import requests
 
 # Configuration flags
 HTML_FORMATTING = False  # Set to True for formatting, False for minification
@@ -37,7 +38,7 @@ if os.path.exists("env.py"):
 app = Flask(__name__)
 
 app.secret_key = os.environ.get("SECRET_KEY")
-Bootstrap(app)
+bootstrap = Bootstrap5(app)
 
 # Configure file upload settings
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads")
@@ -66,7 +67,19 @@ def allowed_file(filename):
 def markdown_to_html(markdown_text):
     """Convert markdown text to HTML with sanitization."""
     # Convert markdown to HTML
-    html = markdown.markdown(markdown_text, extensions=["extra", "codehilite"])
+    html = markdown.markdown(
+        markdown_text,
+        extensions=[
+            "extra",
+            "codehilite",
+            "fenced_code",
+        ],
+        extension_configs={
+            "codehilite": {
+                "css_class": "highlight",
+            },
+        },
+    )
 
     # Create CSS sanitizer to allow safe CSS properties
     css_sanitizer = CSSSanitizer(
@@ -102,10 +115,15 @@ def markdown_to_html(markdown_text):
         "a",
         "img",
         "hr",
+        "div",
+        "span",
     ]
     allowed_attributes = {
         "a": ["href", "title"],
         "img": ["src", "alt", "title", "width", "height", "style"],
+        "div": ["class"],
+        "span": ["class"],
+        "pre": ["class"],
     }
 
     return bleach.clean(

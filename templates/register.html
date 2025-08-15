@@ -47,6 +47,17 @@
                   {% endif %}
                </div>
                <div class="form-group">
+                  {{ form.confirm.label(class="form-label") }}
+                  {{ form.confirm(class="form-control") }}
+                  {% if form.confirm.errors %}
+                     <div class="text-danger">
+                        {% for error in form.confirm.errors %}
+                           <small>{{ error }}</small>
+                        {% endfor %}
+                     </div>
+                  {% endif %}
+               </div>
+               <div class="form-group">
                   {{ form.submit(class="btn btn-primary") }}
                </div>
             </form>

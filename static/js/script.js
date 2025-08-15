@@ -1,41 +1,30 @@
-/***********************************************************************/
-/*Random Quote Generator using https://type.fit/api/quotes             */
-/***********************************************************************/
+/* 
+    Back to Top button
+*/
+//Get the button
+let mybutton = document.getElementById("btn-back-to-top");
 
-const quoteText = document.getElementById('quote');
-const authorText = document.getElementById('author');
-//Limit on number of quotes
-const QUOTE_ARRAY_MAX = 1643;
+// When the user scrolls down 20px from the top of the document, show the button
+if (mybutton) {
+  window.onscroll = function () {
+    scrollFunction();
+  };
 
-//Return a random number up to the QUOTE_ARRAY_MAX
-function getRandomQuote() {
-    return Math.floor(Math.random() * (QUOTE_ARRAY_MAX + 1));
-}
-
-//Asynchronous fetch function
-async function getQuote() {
-    const apiUrl = 'https://type.fit/api/quotes';
-    try {
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        let randomQuote = getRandomQuote();
-        //If author is blank, add 'Unknown'
-        if (data[randomQuote].author === null) {
-            authorText.innerText = 'Unknown';
-        } else {
-            authorText.innerText = data[randomQuote].author;
-        }
-        //Reduce font size for long quotes by assigning classList('long-quote)
-        if (data[randomQuote].text.length > 120) {
-            quoteText.classList.add('long-quote');
-        } else {
-            quoteText.classList.remove('long-quote');
-        }
-        quoteText.innerText = data[randomQuote].text;
-    } catch (error) {
-        console.log('Error', error);
+  function scrollFunction() {
+    if (
+      document.body.scrollTop > 20 ||
+      document.documentElement.scrollTop > 20
+    ) {
+      mybutton.style.display = "block";
+    } else {
+      mybutton.style.display = "none";
     }
-}
+  }
+  // When the user clicks on the button, scroll to the top of the document
+  mybutton.addEventListener("click", backToTop);
 
-//On Load
-getQuote();
+  function backToTop() {
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  }
+}

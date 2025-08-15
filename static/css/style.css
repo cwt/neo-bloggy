@@ -267,6 +267,13 @@ html {
      .display-2 {
          margin-top: 4rem;
     }
+    .navbar-nav .d-flex {
+        flex-direction: column;
+    }
+    .navbar-nav .d-flex .btn {
+        margin-top: 0.5rem;
+        margin-left: 0 !important;
+    }
 }
  @media screen and (max-width: 576px) {
      .display-2 {

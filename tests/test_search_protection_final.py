@@ -4,7 +4,8 @@ import os
 from unittest.mock import patch, MagicMock
 
 # Add the project directory to the Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_dir)
 
 from app import is_suspicious_input
 

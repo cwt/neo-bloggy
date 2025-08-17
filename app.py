@@ -25,6 +25,8 @@ import re
 from functools import lru_cache
 import time
 import requests
+from PIL import Image
+import io
 
 # Configuration flags
 HTML_FORMATTING = False  # Set to True for formatting, False for minification
@@ -70,6 +72,21 @@ def allowed_file(filename):
         "." in filename
         and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
     )
+
+
+def validate_image_content(file):
+    """Validate that the uploaded file is actually an image."""
+    try:
+        # Reset file pointer to beginning
+        file.seek(0)
+        # Try to open and verify it's a valid image
+        img = Image.open(file)
+        img.verify()
+        # Reset file pointer again
+        file.seek(0)
+        return True
+    except Exception:
+        return False
 
 
 def markdown_to_html(markdown_text):
@@ -248,21 +265,30 @@ def after_request(response):
 def get_db():
     """Get database connection for the current request."""
     if "db" not in g:
-        g.db = neosqlite.Connection(
-            DB_PATH,
-            tokenizers=(
-                [(TOKENIZER_NAME, TOKENIZER_PATH)]
-                if TOKENIZER_NAME and TOKENIZER_PATH
-                else None
-            ),  # Tokenizers can be more than one.
-        )
-        # Create FTS indexes for blog posts if they don't exist
-        g.db.blog_posts.create_index(
-            "title", fts=True, tokenizer=TOKENIZER_NAME
-        )
-        g.db.blog_posts.create_index(
-            "subtitle", fts=True, tokenizer=TOKENIZER_NAME
-        )
+        # Try to initialize with tokenizers, fallback to no tokenizers if fails
+        try:
+            g.db = neosqlite.Connection(
+                DB_PATH,
+                tokenizers=(
+                    [(TOKENIZER_NAME, TOKENIZER_PATH)]
+                    if TOKENIZER_NAME and TOKENIZER_PATH
+                    else None
+                ),  # Tokenizers can be more than one.
+            )
+            # Create FTS indexes for blog posts if they don't exist
+            g.db.blog_posts.create_index(
+                "title", fts=True, tokenizer=TOKENIZER_NAME
+            )
+            g.db.blog_posts.create_index(
+                "subtitle", fts=True, tokenizer=TOKENIZER_NAME
+            )
+        except Exception as e:
+            # Fallback to connection without tokenizers
+            print(f"Warning: Failed to initialize with tokenizers: {e}")
+            g.db = neosqlite.Connection(DB_PATH, tokenizers=None)
+            # Create FTS indexes without specific tokenizer
+            g.db.blog_posts.create_index("title", fts=True)
+            g.db.blog_posts.create_index("subtitle", fts=True)
     return g.db
 
 
@@ -316,6 +342,17 @@ def upload():
 
     # Check if file has allowed extension
     if file and allowed_file(file.filename):
+        # Validate that the file is actually an image
+        if not validate_image_content(file):
+            return (
+                jsonify(
+                    {
+                        "error": "File is not a valid image. Please upload PNG, JPG, JPEG, GIF, or WebP images."
+                    }
+                ),
+                400,
+            )
+
         # Generate a unique filename with user prefix
         filename = secure_filename(file.filename)
         name, ext = os.path.splitext(filename)
@@ -418,6 +455,13 @@ def upload_image():
 
         # Check if file has allowed extension
         if file and allowed_file(file.filename):
+            # Validate that the file is actually an image
+            if not validate_image_content(file):
+                flash(
+                    "File is not a valid image. Please upload PNG, JPG, JPEG, GIF, or WebP images."
+                )
+                return redirect(request.url)
+
             # Generate a unique filename with user prefix
             filename = secure_filename(file.filename)
             name, ext = os.path.splitext(filename)
@@ -488,12 +532,22 @@ def get_all_posts():
     Read all blog posts from the database.
     """
     if CACHE_ENABLED:
-        # For cached version, we need to handle this differently since it depends on database state
-        # This is a simplified approach - in a real application, you'd want to invalidate cache
-        # when posts are added/modified
+        # Create a cache key for the main posts list
+        cache_key = get_cache_key("get_all_posts")
+        current_time = time.time()
+
+        # Check if we have a cached result that hasn't expired
+        if cache_key in cache_storage:
+            result, timestamp = cache_storage[cache_key]
+            if current_time - timestamp < CACHE_TIMEOUT:
+                return result
+
+        # Generate new result and cache it
         db = get_db()
         posts = list(db.blog_posts.find())
-        return render_template("index.html", all_posts=posts)
+        result = render_template("index.html", all_posts=posts)
+        cache_storage[cache_key] = (result, current_time)
+        return result
     else:
         db = get_db()
         posts = list(db.blog_posts.find())
@@ -508,38 +562,44 @@ def register():
     """
     form = RegisterForm()
     if form.validate_on_submit():
-        db = get_db()
-        users = db.users
+        try:
+            db = get_db()
+            users = db.users
 
-        # check if email already exists in database
-        existing_user = users.find_one({"email": form.email.data})
+            # check if email already exists in database
+            existing_user = users.find_one({"email": form.email.data})
 
-        if existing_user:
-            flash("You've already signed up with that email, log in instead!")
-            return redirect(url_for("login"))
+            if existing_user:
+                flash(
+                    "You've already signed up with that email, log in instead!"
+                )
+                return redirect(url_for("login"))
 
-        # hash and salt the password
-        hash_and_salted_password = generate_password_hash(
-            form.password.data, method="pbkdf2:sha256", salt_length=8
-        )
-        new_user = {
-            "email": form.email.data,
-            "password": hash_and_salted_password,
-            "name": form.name.data,
-            "security_question": form.security_question.data,
-            "security_answer": generate_password_hash(
-                form.security_answer.data.lower(),
-                method="pbkdf2:sha256",
-                salt_length=8,
-            ),
-        }
-        # insert new_user into the database
-        users.insert_one(new_user)
+            # hash and salt the password
+            hash_and_salted_password = generate_password_hash(
+                form.password.data, method="pbkdf2:sha256", salt_length=8
+            )
+            new_user = {
+                "email": form.email.data,
+                "password": hash_and_salted_password,
+                "name": form.name.data,
+                "security_question": form.security_question.data,
+                "security_answer": generate_password_hash(
+                    form.security_answer.data.lower(),
+                    method="pbkdf2:sha256",
+                    salt_length=8,
+                ),
+            }
+            # insert new_user into the database
+            users.insert_one(new_user)
 
-        # put the new user into 'session' cookie
-        session["user"] = form.name.data
-        flash("Registration Successful")
-        return redirect(url_for("profile", username=session["user"]))
+            # put the new user into 'session' cookie
+            session["user"] = form.name.data
+            flash("Registration Successful")
+            return redirect(url_for("profile", username=session["user"]))
+        except Exception as e:
+            flash(f"Registration failed: {str(e)}")
+            return render_template("register.html", form=form)
     return render_template("register.html", form=form)
 
 
@@ -553,24 +613,30 @@ def login():
     """
     form = LoginForm()
     if form.validate_on_submit():
-        db = get_db()
-        users = db.users
-        email = form.email.data
-        password = form.password.data
+        try:
+            db = get_db()
+            users = db.users
+            email = form.email.data
+            password = form.password.data
 
-        # check if email already exists
-        existing_user = users.find_one({"email": email})
-        # if email doesn't exist or password incorrect
-        if not existing_user:
-            flash("That email or password does not exist, please try again.")
-            return redirect(url_for("login"))
-        elif not check_password_hash(existing_user["password"], password):
-            flash("That email and password dont match, please try again.")
-            return redirect(url_for("login"))
-        else:
-            session["user"] = existing_user["name"]
-            flash(f"Welcome Back, {existing_user['name'].title()}")
-            return redirect(url_for("profile", username=session["user"]))
+            # check if email already exists
+            existing_user = users.find_one({"email": email})
+            # if email doesn't exist or password incorrect
+            if not existing_user:
+                flash(
+                    "That email or password does not exist, please try again."
+                )
+                return redirect(url_for("login"))
+            elif not check_password_hash(existing_user["password"], password):
+                flash("That email and password dont match, please try again.")
+                return redirect(url_for("login"))
+            else:
+                session["user"] = existing_user["name"]
+                flash(f"Welcome Back, {existing_user['name'].title()}")
+                return redirect(url_for("profile", username=session["user"]))
+        except Exception as e:
+            flash(f"Login failed: {str(e)}")
+            return render_template("login.html", form=form)
     return render_template("login.html", form=form)
 
 
@@ -582,15 +648,19 @@ def profile(username):
 
     Retrieve all the users Posts.
     """
+    # Security check: Only allow users to view their own profile
+    if "user" not in session or session["user"] != username:
+        flash("You can only view your own profile.")
+        return redirect(url_for("login"))
+
     db = get_db()
-    user = db.users.find_one({"name": session["user"]})
-    username = user["name"] if user else username
+    user = db.users.find_one({"name": username})
+    if not user:
+        flash("User not found.")
+        return redirect(url_for("login"))
+
     posts = db.blog_posts.find({"author": username})
-    # if logged in
-    if session["user"]:
-        return render_template("profile.html", username=username, posts=posts)
-    # if not logged in, return to login page
-    return redirect(url_for("login"))
+    return render_template("profile.html", username=username, posts=posts)
 
 
 # ----- EDIT PROFILE ----- #
@@ -660,47 +730,57 @@ def show_post(post_id):
 
     Allow the user to Comment if logged in.
     """
-    form = CommentForm()
-    db = get_db()
+    try:
+        form = CommentForm()
+        db = get_db()
 
-    # For GET requests, we can use caching
-    if request.method == "GET":
-        requested_post, requested_post_comments = get_post_with_comments(
-            post_id
+        # For GET requests, we can use caching
+        if request.method == "GET":
+            requested_post, requested_post_comments = get_post_with_comments(
+                post_id
+            )
+        else:
+            # For POST requests (comments), we need fresh data
+            requested_post = db.blog_posts.find_one({"_id": int(post_id)})
+            requested_post_comments = db.blog_comments.find(
+                {"parent_post": int(post_id)}
+            )
+
+        # Handle case where post is not found
+        if not requested_post:
+            flash("Post not found.")
+            return redirect(url_for("get_all_posts"))
+
+        # commenting on a post
+        if form.validate_on_submit():
+            if not session.get("user"):
+                flash("You need to login or register to comment.")
+                return redirect(url_for("login"))
+
+            new_comment = {
+                "text": form.comment_text.data,
+                "comment_author": session["user"],
+                "parent_post": int(post_id),
+            }
+
+            db.blog_comments.insert_one(new_comment)
+            # Clear cache for this post since we've added a comment
+            if CACHE_ENABLED:
+                cache_key = get_cache_key("get_post_with_comments", post_id)
+                if cache_key in cache_storage:
+                    del cache_storage[cache_key]
+            flash("Comment added successfully!")
+            return redirect(url_for("show_post", post_id=post_id))
+
+        return render_template(
+            "post.html",
+            post=requested_post,
+            comments=requested_post_comments,
+            form=form,
         )
-    else:
-        # For POST requests (comments), we need fresh data
-        requested_post = db.blog_posts.find_one({"_id": int(post_id)})
-        requested_post_comments = db.blog_comments.find(
-            {"parent_post": int(post_id)}
-        )
-
-    # commenting on a post
-    if form.validate_on_submit():
-        if not session["user"]:
-            flash("You need to login or register to comment.")
-            return redirect(url_for("login"))
-
-        new_comment = {
-            "text": form.comment_text.data,
-            "comment_author": session["user"],
-            "parent_post": int(post_id),
-        }
-
-        db.blog_comments.insert_one(new_comment)
-        # Clear cache for this post since we've added a comment
-        if CACHE_ENABLED:
-            cache_key = get_cache_key("get_post_with_comments", post_id)
-            if cache_key in cache_storage:
-                del cache_storage[cache_key]
-        return redirect(url_for("show_post", post_id=post_id))
-
-    return render_template(
-        "post.html",
-        post=requested_post,
-        comments=requested_post_comments,
-        form=form,
-    )
+    except Exception as e:
+        flash(f"Error loading post: {str(e)}")
+        return redirect(url_for("get_all_posts"))
 
 
 # ----- CREATE A NEW POST ----- #
@@ -715,21 +795,28 @@ def create_post():
         # create a Form for data entry
         form = CreatePostForm()
         if form.validate_on_submit():
-            db = get_db()
-            new_post = {
-                "title": form.title.data,
-                "subtitle": form.subtitle.data,
-                "body": form.body.data,
-                "img_url": form.img_url.data,
-                "author": session["user"],
-                "date": date.today().strftime("%B %d, %Y"),
-            }
-            db.blog_posts.insert_one(new_post)
-            flash("Post Successfully Added")
-            # Clear cache since we've added a new post
-            if CACHE_ENABLED:
-                clear_cache()
-            return redirect(url_for("get_all_posts"))
+            try:
+                db = get_db()
+                new_post = {
+                    "title": form.title.data,
+                    "subtitle": form.subtitle.data,
+                    "body": form.body.data,
+                    "img_url": form.img_url.data,
+                    "author": session["user"],
+                    "date": date.today().strftime("%B %d, %Y"),
+                }
+                db.blog_posts.insert_one(new_post)
+                flash("Post Successfully Added")
+                # Clear cache since we've added a new post
+                if CACHE_ENABLED:
+                    # Only clear the main posts list cache
+                    cache_key = get_cache_key("get_all_posts")
+                    if cache_key in cache_storage:
+                        del cache_storage[cache_key]
+                return redirect(url_for("get_all_posts"))
+            except Exception as e:
+                flash(f"Failed to create post: {str(e)}")
+                return render_template("create_post.html", form=form)
         return render_template("create_post.html", form=form)
     else:
         return redirect(url_for("login"))
@@ -743,35 +830,51 @@ def edit_post(post_id):
 
     Update all Post data on submit.
     """
-    db = get_db()
-    post = db.blog_posts.find_one({"_id": int(post_id)})
+    try:
+        db = get_db()
+        post = db.blog_posts.find_one({"_id": int(post_id)})
 
-    edit_form = CreatePostForm(
-        title=post["title"],
-        subtitle=post["subtitle"],
-        img_url=post["img_url"],
-        author=session["user"],
-        body=post["body"],
-    )
-    if edit_form.validate_on_submit():
-        db.blog_posts.update_one(
-            {"_id": int(post_id)},
-            {
-                "$set": {
-                    "title": edit_form.title.data,
-                    "subtitle": edit_form.subtitle.data,
-                    "img_url": edit_form.img_url.data,
-                    "body": edit_form.body.data,
-                }
-            },
+        if not post:
+            flash("Post not found.")
+            return redirect(url_for("get_all_posts"))
+
+        edit_form = CreatePostForm(
+            title=post["title"],
+            subtitle=post["subtitle"],
+            img_url=post["img_url"],
+            author=session["user"],
+            body=post["body"],
         )
-        # Clear cache since we've modified a post
-        if CACHE_ENABLED:
-            clear_cache()
-        return redirect(url_for("show_post", post_id=post_id))
-    return render_template(
-        "create_post.html", form=edit_form, is_edit=True, post=post
-    )
+        if edit_form.validate_on_submit():
+            db.blog_posts.update_one(
+                {"_id": int(post_id)},
+                {
+                    "$set": {
+                        "title": edit_form.title.data,
+                        "subtitle": edit_form.subtitle.data,
+                        "img_url": edit_form.img_url.data,
+                        "body": edit_form.body.data,
+                    }
+                },
+            )
+            # Clear cache since we've modified a post
+            if CACHE_ENABLED:
+                # Clear cache for this specific post
+                cache_key = get_cache_key("get_post_with_comments", post_id)
+                if cache_key in cache_storage:
+                    del cache_storage[cache_key]
+                # Also clear main posts list cache
+                cache_key = get_cache_key("get_all_posts")
+                if cache_key in cache_storage:
+                    del cache_storage[cache_key]
+            flash("Post Successfully Updated")
+            return redirect(url_for("show_post", post_id=post_id))
+        return render_template(
+            "create_post.html", form=edit_form, is_edit=True, post=post
+        )
+    except Exception as e:
+        flash(f"Failed to edit post: {str(e)}")
+        return redirect(url_for("get_all_posts"))
 
 
 # ----- DELETE A POST BY ID ----- #
@@ -782,13 +885,35 @@ def delete_post(post_id):
 
     Redirect back to main page on submit.
     """
-    db = get_db()
-    db.blog_posts.delete_one({"_id": int(post_id)})
-    flash("Post Successfully Deleted")
-    # Clear cache since we've deleted a post
-    if CACHE_ENABLED:
-        clear_cache()
-    return redirect(url_for("get_all_posts"))
+    try:
+        db = get_db()
+        # Verify the post exists and get it
+        post = db.blog_posts.find_one({"_id": int(post_id)})
+        if not post:
+            flash("Post not found.")
+            return redirect(url_for("get_all_posts"))
+
+        # Check if the current user is the author of the post
+        if post["author"] != session.get("user"):
+            flash("You can only delete your own posts.")
+            return redirect(url_for("get_all_posts"))
+
+        db.blog_posts.delete_one({"_id": int(post_id)})
+        flash("Post Successfully Deleted")
+        # Clear cache since we've deleted a post
+        if CACHE_ENABLED:
+            # Clear cache for this specific post
+            cache_key = get_cache_key("get_post_with_comments", post_id)
+            if cache_key in cache_storage:
+                del cache_storage[cache_key]
+            # Also clear main posts list cache
+            cache_key = get_cache_key("get_all_posts")
+            if cache_key in cache_storage:
+                del cache_storage[cache_key]
+        return redirect(url_for("get_all_posts"))
+    except Exception as e:
+        flash(f"Failed to delete post: {str(e)}")
+        return redirect(url_for("get_all_posts"))
 
 
 # ----- DELETE A COMMENT BY ID ----- #

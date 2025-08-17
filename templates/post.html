@@ -147,6 +147,14 @@
    </div>
 </div>
 
+<style>
+/* Fix for EasyMDE toolbar button sizing */
+.EasyMDEContainer .editor-toolbar button {
+    width: auto !important;
+    flex: none !important;
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize EasyMDE for comment content
@@ -167,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
             toolbar: [
                 "bold", "italic", "heading", "|",
                 "quote", "unordered-list", "ordered-list", "|",
-                "link", "image", "|",
+                "link", "image", "table", "|",
                 "preview", "|",
                 {
                     name: "upload",

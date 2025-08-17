@@ -100,9 +100,9 @@ document.addEventListener('DOMContentLoaded', function() {
         loadImagesAndShowModal();
     });
     
-    // Initialize SimpleMDE for post content
+    // Initialize EasyMDE for post content
     if (document.getElementById('body')) {
-        var simplemde = new SimpleMDE({
+        var simplemde = new EasyMDE({
             element: document.getElementById('body'),
             autosave: {
                 enabled: true,
@@ -184,9 +184,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Initialize SimpleMDE for comment content (if present)
+    // Initialize EasyMDE for comment content (if present)
     if (document.getElementById('comment_text')) {
-        var commentMde = new SimpleMDE({
+        var commentMde = new EasyMDE({
             element: document.getElementById('comment_text'),
             spellChecker: false,
             previewRender: function(plainText) {

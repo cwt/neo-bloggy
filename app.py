@@ -245,7 +245,7 @@ def get_db():
             DB_PATH,
             tokenizers=[
                 (TOKENIZER_NAME, TOKENIZER_PATH)
-            ],  # Tokenizers can be more than one.
+            ] if TOKENIZER_NAME and TOKENIZER_PATH else None,  # Tokenizers can be more than one.
         )
         # Create FTS indexes for blog posts if they don't exist
         g.db.blog_posts.create_index(

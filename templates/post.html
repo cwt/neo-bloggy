@@ -14,7 +14,7 @@
    <div class="container">
       <div class="row">
          <div class="col-lg-8 col-md-10 mx-auto">
-            {{ post.body|markdown|safe }}
+                           {{ post.body|markdown|safe }}
             <hr>
             {% if session.user == post.author %}
             <div class="clearfix mb-5">
@@ -145,9 +145,9 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize SimpleMDE for comment content
+    // Initialize EasyMDE for comment content
     if (document.getElementById('comment_text')) {
-        var simplemde = new SimpleMDE({
+        var simplemde = new EasyMDE({
             element: document.getElementById('comment_text'),
             spellChecker: false,
             forceSync: true,

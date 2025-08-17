@@ -152,20 +152,25 @@ html {
      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
 }
  .main-jumbotron {
-     background-image: url("/static/img/background.jpg");
+     background-image: url("/static/img/webp/background.webp");
 }
  .login-jumbotron {
-     background: url("/static/img/login.jpg") no-repeat center center;
+     background: url("/static/img/webp/login.webp") no-repeat center center;
 }
  .signup-jumbotron {
-     background: url("/static/img/signup.jpg") no-repeat center center;
+     background: url("/static/img/webp/signup.webp") no-repeat center center;
+     background-size: cover;
 }
  .write-jumbotron {
-     background: url("/static/img/old-camera-lens-toys-hobbies.jpg") no-repeat center center;
+     background: url("/static/img/webp/create.webp") no-repeat center center;
+     background-size: cover;
+}
+ .upload-jumbotron {
+     background: url("/static/img/webp/old-camera-lens-toys-hobbies.webp") no-repeat center center;
      background-size: cover;
 }
  .profile-jumbotron {
-     background: url("/static/img/signup.jpg") no-repeat center center;
+     background: url("/static/img/webp/signup.webp") no-repeat center center;
      background-size: cover;
 }
 /*------------------------------------*\ #FOOTER \*------------------------------------*/

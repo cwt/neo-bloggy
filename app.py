@@ -979,14 +979,107 @@ def search():
     """
     db = get_db()
     query = request.form.get("query")
+
+    # Security check: Reject URLs and code patterns
+    if query and is_suspicious_input(query):
+        flash("Invalid search query. Please use only text in search.")
+        return redirect(url_for("get_all_posts"))
+
     # For neosqlite, we'll use the $text operator with FTS for efficient text search
     if query:
-        # Use neosqlite's $text with $search for FTS-based search
-        # This will search across all FTS-indexed fields (title and subtitle)
-        posts = list(db.blog_posts.find({"$text": {"$search": query}}))
+        try:
+            # Use neosqlite's $text with $search for FTS-based search
+            # This will search across all FTS-indexed fields (title and subtitle)
+            posts = list(db.blog_posts.find({"$text": {"$search": query}}))
+        except Exception as e:
+            # If FTS query fails due to special characters, fall back to regex search
+            # This is a more basic search but will handle special characters
+            import re
+
+            escaped_query = re.escape(query)
+            posts = list(
+                db.blog_posts.find(
+                    {
+                        "$or": [
+                            {
+                                "title": {
+                                    "$regex": escaped_query,
+                                    "$options": "i",
+                                }
+                            },
+                            {
+                                "subtitle": {
+                                    "$regex": escaped_query,
+                                    "$options": "i",
+                                }
+                            },
+                        ]
+                    }
+                )
+            )
     else:
         posts = list(db.blog_posts.find())
     return render_template("index.html", all_posts=posts, search_query=query)
+
+
+def is_suspicious_input(text):
+    """
+    Check if the input text contains URLs or programming code patterns.
+
+    Returns True if suspicious content is detected.
+    """
+    import re
+
+    # Check for URLs (more precise patterns)
+    url_patterns = [
+        r"https?://[^\s]+",
+        r"www\.[^\s]+",
+        r"[^\s]+\.(?:com|org|net|edu|gov|mil|int|co|uk|de|fr|jp|cn|au|ca|ru|br|in|it|es)[^\s]*",
+    ]
+
+    for pattern in url_patterns:
+        try:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+        except re.error:
+            # Skip invalid patterns
+            continue
+
+    # Check for common code patterns
+    code_patterns = [
+        # HTML/JS tags
+        r"<\s*(script|iframe|object|embed|link|style|meta|form)\b",
+        # SQL injection patterns (more precise)
+        r"\b(union\s+select|insert\s+into|update\s+\w+\s+set|delete\s+from|drop\s+table|create\s+table|alter\s+table)\b",
+        # JavaScript dangerous functions
+        r"\b(eval|document\.cookie|window\.location|location\.href)\s*\(",
+        # CSS expressions
+        r"expression\s*\(",
+        # PHP tags
+        r"<\?php",
+        r"<\?",
+        # Shell commands
+        r"\b(rm\s+-rf|chmod\s+\d{3,4}|wget\s+http|curl\s+http)\b",
+        # File paths (Unix/Windows)
+        r"\b(?:[A-Za-z]:[\/\\]|\/|\.{0,2}\/)[\w\/\\.-]+(?:[\/\\][\w\/\\.-]+)*\b",
+    ]
+
+    for pattern in code_patterns:
+        try:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+        except re.error:
+            # Skip invalid patterns
+            continue
+
+    # Check for excessive special characters (potential obfuscation)
+    # Only apply this check for longer texts to avoid false positives
+    if len(text) > 20:
+        special_chars = len(re.findall(r"[^\w\s]", text))
+        if special_chars / len(text) > 0.3:  # More than 30% special chars
+            return True
+
+    return False
 
 
 # ----- PASSWORD RECOVERY ----- #

@@ -8,6 +8,10 @@
          <p>Upload images for your blog posts</p>
       </div>
    </div>
+
+   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}, {'name': 'Upload Image', 'url': '#'}] %}
+      {% include "breadcrumb.html" %}
+   {% endwith %}
    <div class="container">
       <div class="row">
          <div class="col-lg-8 col-md-10 mx-auto">

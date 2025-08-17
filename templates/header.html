@@ -4,25 +4,85 @@
       <!-- META TAGS -->
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-      <meta name="description" content="{{ site_description }}">
-      <meta name="author" content="{{ site_author }}">
+      
+      {% if post %}
+      <!-- Post-specific meta tags -->
+      <meta name="description" content="{{ post.subtitle or post.title }}">
+      <meta name="author" content="{{ post.author }}">
+      <meta name="keywords" content="{{ post.title }}, {{ post.author }}, blog, article">
       
       <!-- Open Graph / Facebook -->
-      <meta property=\"og:type\" content=\"website\">
-      <meta property=\"og:url\" content=\"{{ request.url }}\">
-      <meta property=\"og:title\" content=\"{{ site_title }}\">
-      <meta property=\"og:description\" content=\"{{ site_description }}\">
-      <meta property=\"og:image\" content=\"{{ url_for('static', filename='img/webp/logo.webp', _external=True) }}\">
+      <meta property="og:type" content="article">
+      <meta property="og:url" content="{{ url_for('show_post', post_id=post._id, _external=True) }}">
+      <meta property="og:title" content="{{ post.title }}">
+      <meta property="og:description" content="{{ post.subtitle or post.title[:160] }}">
+      {% if post.img_url %}
+      <meta property="og:image" content="{{ post.img_url }}">
+      {% endif %}
       
       <!-- Twitter -->
-      <meta property=\"twitter:card\" content=\"summary_large_image\">
-      <meta property=\"twitter:url\" content=\"{{ request.url }}\">
-      <meta property=\"twitter:title\" content=\"{{ site_title }}\">
-      <meta property=\"twitter:description\" content=\"{{ site_description }}\">
-      <meta property=\"twitter:image\" content=\"{{ url_for('static', filename='img/webp/logo.webp', _external=True) }}\">
-
-      <!-- TITLE | FAVICON -->
+      <meta property="twitter:card" content="summary_large_image">
+      <meta property="twitter:url" content="{{ url_for('show_post', post_id=post._id, _external=True) }}">
+      <meta property="twitter:title" content="{{ post.title }}">
+      <meta property="twitter:description" content="{{ post.subtitle or post.title[:160] }}">
+      {% if post.img_url %}
+      <meta property="twitter:image" content="{{ post.img_url }}">
+      {% endif %}
+      
+      <!-- Article schema -->
+      <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "{{ post.title }}",
+        "author": {
+          "@type": "Person",
+          "name": "{{ post.author }}"
+        },
+        "datePublished": "{{ post.date }}",
+        "description": "{{ post.subtitle or post.title }}",
+        {% if post.img_url %}
+        "image": "{{ post.img_url }}",
+        {% endif %}
+        "publisher": {
+          "@type": "Organization",
+          "name": "{{ site_title }}",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "{{ url_for('static', filename='img/webp/logo.webp', _external=True) }}"
+          }
+        }
+      }
+      </script>
+      
+      <title>{{ post.title }} - {{ site_title }}</title>
+      {% else %}
+      <!-- Default meta tags -->
+      <meta name="description" content="{{ site_description }}">
+      <meta name="author" content="{{ site_author }}">
+      <meta name="keywords" content="blog, articles, {{ site_title }}">
+      
+      <!-- Open Graph / Facebook -->
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="{{ request.url }}">
+      <meta property="og:title" content="{{ site_title }}">
+      <meta property="og:description" content="{{ site_description }}">
+      <meta property="og:image" content="{{ url_for('static', filename='img/webp/logo.webp', _external=True) }}">
+      
+      <!-- Twitter -->
+      <meta property="twitter:card" content="summary_large_image">
+      <meta property="twitter:url" content="{{ request.url }}">
+      <meta property="twitter:title" content="{{ site_title }}">
+      <meta property="twitter:description" content="{{ site_description }}">
+      <meta property="twitter:image" content="{{ url_for('static', filename='img/webp/logo.webp', _external=True) }}">
+      
       <title>{{ site_title }}</title>
+      {% endif %}
+      
+      <!-- Canonical URL -->
+      <link rel="canonical" href="{{ request.url }}">
+
+       <!-- FAVICON -->
       <link rel="icon" type="image/webp" href="{{ url_for('static', filename='img/webp/favicon.webp')}}">
       
       <!-- Canonical URL -->
@@ -45,7 +105,7 @@
       <header>
          <nav class="navbar navbar-expand-md navbar-light fixed-top bg-light">
             <div class="container">
-               <a class="navbar-brand" href="{{url_for('get_all_posts')}}"><img src="/static/img/webp/logo.webp" alt="" height="48"></a>
+               <a class="navbar-brand" href="{{url_for('get_all_posts')}}"><img src="/static/img/webp/logo.webp" alt="{{ site_title }} Logo" height="48"></a>
                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
                   <span class="navbar-toggler-icon"></span>
                </button>

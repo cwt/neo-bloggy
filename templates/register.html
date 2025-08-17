@@ -8,6 +8,10 @@
          <p>We can't wait to see what you will create.</p>
       </div>
    </div>
+
+   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}, {'name': 'Join Us', 'url': '#'}] %}
+      {% include "breadcrumb.html" %}
+   {% endwith %}
    <!-- MAIN CONTENT -->
    <div class="container">
       <div class="row">

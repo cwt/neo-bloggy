@@ -9,9 +9,23 @@
          <h1 class="display-2" >New Post</h1>
          {% endif %}
          <hr class="my-4">
-         <p>Lets get creative!</p>
+         {% if is_edit: %}
+         <p>Edit your existing post.</p>
+         {% else: %}
+         <p>Share your thoughts with the world.</p>
+         {% endif %}
       </div>
    </div>
+
+   {% if is_edit %}
+      {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}, {'name': post.title, 'url': url_for('show_post', post_id=post._id)}, {'name': 'Edit Post', 'url': '#'}] %}
+         {% include "breadcrumb.html" %}
+      {% endwith %}
+   {% else %}
+      {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}, {'name': 'New Post', 'url': '#'}] %}
+         {% include "breadcrumb.html" %}
+      {% endwith %}
+   {% endif %}
    <div class="container">
       <div class="row">
          <div class="col-lg-8 col-md-10 mx-auto">

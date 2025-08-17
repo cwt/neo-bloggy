@@ -9,6 +9,10 @@
    </div>
 </div>
 
+{% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}, {'name': post.title, 'url': '#'}] %}
+   {% include "breadcrumb.html" %}
+{% endwith %}
+
 <!-- POST CONTENT -->
 <article>
    <div class="container">

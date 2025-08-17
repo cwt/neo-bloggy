@@ -13,6 +13,10 @@
          {% endif %}
       </div>
    </div>
+   
+   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}], active_page='Home' %}
+      {% include "breadcrumb.html" %}
+   {% endwith %}
    <!-- POST CARD-CONTENT -->
    <div class="container">
       <div class="row card-margin">

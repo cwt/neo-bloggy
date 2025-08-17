@@ -18,9 +18,18 @@
             {% with messages = get_flashed_messages() %}
             {% if messages %}
             {% for message in messages %}
+            {% if message.startswith('URL_LINE:') %}
+            <div class="alert alert-success" role="alert" style="word-break: break-all; white-space: normal;">
+               <strong>Image URL:</strong><br>
+               <code>{{ message[9:] }}</code>
+               <button class="btn btn-xs btn-outline-secondary ms-2 copy-url-btn" 
+                       data-url="{{ message[9:] }}" style="padding: 0.1rem 0.25rem; font-size: 0.75rem;">Copy</button>
+            </div>
+            {% else %}
             <div class="alert alert-info" role="alert">
                {{ message }}
             </div>
+            {% endif %}
             {% endfor %}
             {% endif %}
             {% endwith %}
@@ -65,3 +74,25 @@
 <br>
 <hr>
 {% include "footer.html" %}
+
+<script>
+// Add copy functionality for URL buttons
+document.addEventListener('DOMContentLoaded', function() {
+    const copyButtons = document.querySelectorAll('.copy-url-btn');
+    copyButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const url = this.getAttribute('data-url');
+            navigator.clipboard.writeText(url).then(() => {
+                // Show feedback
+                const originalText = this.textContent;
+                this.textContent = '✓';
+                setTimeout(() => {
+                    this.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy URL: ', err);
+            });
+        });
+    });
+});
+</script>

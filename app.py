@@ -57,7 +57,7 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max file size
 # Create upload directory if it doesn't exist
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
-# Allowed file extensions
+# Allowed file extensions (for upload validation only, all files are converted to WebP)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 # Database configuration
@@ -353,15 +353,32 @@ def upload():
                 400,
             )
 
-        # Generate a unique filename with user prefix
+        # Generate a unique filename with user prefix and WebP extension
         filename = secure_filename(file.filename)
         name, ext = os.path.splitext(filename)
-        unique_filename = f"{session['user']}_{name}_{uuid.uuid4().hex}{ext}"
+        unique_filename = f"{session['user']}_{name}_{uuid.uuid4().hex}.webp"
 
-        # Save file
+        # Save file as WebP
         try:
-            file.save(
-                os.path.join(app.config["UPLOAD_FOLDER"], unique_filename)
+            # Reset file pointer to beginning
+            file.seek(0)
+            # Open image and convert to WebP
+            img = Image.open(file)
+            # Convert RGBA to RGB if necessary (WebP supports transparency but it's better to be explicit)
+            if img.mode in ("RGBA", "LA"):
+                # Create a white background for transparent images
+                background = Image.new("RGB", img.size, (255, 255, 255))
+                background.paste(
+                    img, mask=img.split()[-1] if img.mode == "RGBA" else None
+                )
+                img = background
+
+            # Save as WebP with good quality
+            img.save(
+                os.path.join(app.config["UPLOAD_FOLDER"], unique_filename),
+                "WEBP",
+                quality=85,
+                method=6,
             )
 
             # Generate URL for the uploaded file
@@ -462,20 +479,40 @@ def upload_image():
                 )
                 return redirect(request.url)
 
-            # Generate a unique filename with user prefix
+            # Generate a unique filename with user prefix and WebP extension
             filename = secure_filename(file.filename)
             name, ext = os.path.splitext(filename)
             unique_filename = (
-                f"{session['user']}_{name}_{uuid.uuid4().hex}{ext}"
+                f"{session['user']}_{name}_{uuid.uuid4().hex}.webp"
             )
 
-            # Save file
+            # Save file as WebP
             try:
-                file.save(
-                    os.path.join(app.config["UPLOAD_FOLDER"], unique_filename)
+                # Reset file pointer to beginning
+                file.seek(0)
+                # Open image and convert to WebP
+                img = Image.open(file)
+                # Convert RGBA to RGB if necessary
+                if img.mode in ("RGBA", "LA"):
+                    # Create a white background for transparent images
+                    background = Image.new("RGB", img.size, (255, 255, 255))
+                    background.paste(
+                        img,
+                        mask=img.split()[-1] if img.mode == "RGBA" else None,
+                    )
+                    img = background
+
+                # Save as WebP with good quality
+                img.save(
+                    os.path.join(app.config["UPLOAD_FOLDER"], unique_filename),
+                    "WEBP",
+                    quality=85,
+                    method=6,
                 )
+                flash("File uploaded successfully!")
+                # Use a special marker for the URL line so the template can handle it differently
                 flash(
-                    f'File uploaded successfully! URL: {url_for("uploaded_files", filename=unique_filename, _external=True)}'
+                    f"URL_LINE:{url_for('uploaded_files', filename=unique_filename, _external=True)}"
                 )
             except Exception as e:
                 flash(f"Upload failed: {str(e)}")

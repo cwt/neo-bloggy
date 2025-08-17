@@ -45,6 +45,7 @@ from forms import (
     CreatePostForm,
     CommentForm,
     EditProfileForm,
+    PasswordRecoveryForm,
 )
 
 # Configure file upload settings
@@ -525,6 +526,12 @@ def register():
             "email": form.email.data,
             "password": hash_and_salted_password,
             "name": form.name.data,
+            "security_question": form.security_question.data,
+            "security_answer": generate_password_hash(
+                form.security_answer.data.lower(),
+                method="pbkdf2:sha256",
+                salt_length=8,
+            ),
         }
         # insert new_user into the database
         users.insert_one(new_user)
@@ -609,6 +616,12 @@ def edit_profile():
         update_data = {
             "name": form.name.data,
             "email": form.email.data,
+            "security_question": form.security_question.data,
+            "security_answer": generate_password_hash(
+                form.security_answer.data.lower(),
+                method="pbkdf2:sha256",
+                salt_length=8,
+            ),
         }
         if form.password.data:
             update_data["password"] = generate_password_hash(
@@ -622,6 +635,7 @@ def edit_profile():
     elif request.method == "GET":
         form.name.data = user["name"]
         form.email.data = user["email"]
+        form.security_question.data = user.get("security_question", "")
 
     return render_template("edit_profile.html", form=form)
 
@@ -811,6 +825,49 @@ def search():
     else:
         posts = list(db.blog_posts.find())
     return render_template("index.html", all_posts=posts, search_query=query)
+
+
+# ----- PASSWORD RECOVERY ----- #
+@app.route("/recover-password", methods=["GET", "POST"])
+def recover_password():
+    """
+    Recover password using security question.
+    """
+    form = PasswordRecoveryForm()
+    if form.validate_on_submit():
+        db = get_db()
+        users = db.users
+
+        # check if email exists in database
+        user = users.find_one({"email": form.email.data})
+
+        if not user:
+            flash("No account found with that email address.")
+            return render_template("recover_password.html", form=form)
+
+        # check if security question and answer match
+        if form.security_question.data == user.get(
+            "security_question"
+        ) and check_password_hash(
+            user["security_answer"], form.security_answer.data.lower()
+        ):
+
+            # Update password
+            new_password_hash = generate_password_hash(
+                form.password.data, method="pbkdf2:sha256", salt_length=8
+            )
+            users.update_one(
+                {"_id": user["_id"]}, {"$set": {"password": new_password_hash}}
+            )
+
+            flash(
+                "Password successfully reset. You can now log in with your new password."
+            )
+            return redirect(url_for("login"))
+        else:
+            flash("Security question or answer is incorrect.")
+
+    return render_template("recover_password.html", form=form)
 
 
 # ----- SITEMAP ----- #

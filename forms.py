@@ -1,6 +1,13 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, PasswordField, TextAreaField
-from wtforms.validators import DataRequired, URL, Email, Length, EqualTo, Optional
+from wtforms.validators import (
+    DataRequired,
+    URL,
+    Email,
+    Length,
+    EqualTo,
+    Optional,
+)
 
 
 # ----- SIGN UP FORM ----- #
@@ -46,7 +53,9 @@ class CommentForm(FlaskForm):
 
 # ----- EDIT PROFILE FORM ----- #
 class EditProfileForm(FlaskForm):
-    name = StringField("Name", validators=[DataRequired(), Length(min=4, max=25)])
+    name = StringField(
+        "Name", validators=[DataRequired(), Length(min=4, max=25)]
+    )
     email = StringField("Email address", validators=[DataRequired(), Email()])
     password = PasswordField(
         "New Password",

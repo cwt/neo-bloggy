@@ -39,7 +39,13 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY")
 bootstrap = Bootstrap5(app)
 
-from forms import RegisterForm, LoginForm, CreatePostForm, CommentForm, EditProfileForm
+from forms import (
+    RegisterForm,
+    LoginForm,
+    CreatePostForm,
+    CommentForm,
+    EditProfileForm,
+)
 
 # Configure file upload settings
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads")
@@ -243,9 +249,11 @@ def get_db():
     if "db" not in g:
         g.db = neosqlite.Connection(
             DB_PATH,
-            tokenizers=[
-                (TOKENIZER_NAME, TOKENIZER_PATH)
-            ] if TOKENIZER_NAME and TOKENIZER_PATH else None,  # Tokenizers can be more than one.
+            tokenizers=(
+                [(TOKENIZER_NAME, TOKENIZER_PATH)]
+                if TOKENIZER_NAME and TOKENIZER_PATH
+                else None
+            ),  # Tokenizers can be more than one.
         )
         # Create FTS indexes for blog posts if they don't exist
         g.db.blog_posts.create_index(
@@ -277,7 +285,6 @@ def inject_site_details():
     }
 
 
-
 # ---------------- #
 #   FILE UPLOAD    #
 # ---------------- #
@@ -292,6 +299,10 @@ def uploaded_files(filename):
 @app.route("/upload", methods=["POST"])
 def upload():
     """Handle file uploads from markdown editor."""
+    # Check if user is logged in
+    if "user" not in session:
+        return jsonify({"error": "You must be logged in to upload files"}), 403
+
     # Check if file is in request
     if "file" not in request.files:
         return jsonify({"error": "No file selected"}), 400
@@ -304,10 +315,10 @@ def upload():
 
     # Check if file has allowed extension
     if file and allowed_file(file.filename):
-        # Generate a unique filename
+        # Generate a unique filename with user prefix
         filename = secure_filename(file.filename)
         name, ext = os.path.splitext(filename)
-        unique_filename = f"{name}_{uuid.uuid4().hex}{ext}"
+        unique_filename = f"{session['user']}_{name}_{uuid.uuid4().hex}{ext}"
 
         # Save file
         try:
@@ -337,12 +348,19 @@ def upload():
 
 @app.route("/api/images")
 def list_images():
-    """API endpoint to list all uploaded images."""
+    """API endpoint to list uploaded images for the current user."""
+    # Check if user is logged in
+    if "user" not in session:
+        return jsonify({"error": "You must be logged in to view images"}), 403
+
     try:
         # Get all uploaded files
         files = os.listdir(app.config["UPLOAD_FOLDER"])
-        # Filter only image files
-        image_files = [f for f in files if allowed_file(f)]
+        # Filter only image files that belong to the current user
+        user_prefix = f"{session['user']}_"
+        image_files = [
+            f for f in files if allowed_file(f) and f.startswith(user_prefix)
+        ]
         # Sort by modification time (newest first)
         image_files.sort(
             key=lambda x: os.path.getmtime(
@@ -354,6 +372,8 @@ def list_images():
         # Create list of image data
         images = []
         for filename in image_files:
+            # Display name without user prefix
+            display_name = filename[len(user_prefix) :]
             file_url = url_for(
                 "uploaded_files", filename=filename, _external=True
             )
@@ -363,7 +383,7 @@ def list_images():
 
             images.append(
                 {
-                    "name": filename,
+                    "name": display_name,
                     "url": file_url,
                     "size": file_size,
                     "modified": file_modified,
@@ -378,6 +398,10 @@ def list_images():
 @app.route("/upload-image", methods=["GET", "POST"])
 def upload_image():
     """Handle image uploads from the web interface."""
+    # Check if user is logged in
+    if "user" not in session:
+        return redirect(url_for("login"))
+
     if request.method == "POST":
         # Check if file is in request
         if "file" not in request.files:
@@ -393,10 +417,12 @@ def upload_image():
 
         # Check if file has allowed extension
         if file and allowed_file(file.filename):
-            # Generate a unique filename
+            # Generate a unique filename with user prefix
             filename = secure_filename(file.filename)
             name, ext = os.path.splitext(filename)
-            unique_filename = f"{name}_{uuid.uuid4().hex}{ext}"
+            unique_filename = (
+                f"{session['user']}_{name}_{uuid.uuid4().hex}{ext}"
+            )
 
             # Save file
             try:
@@ -415,11 +441,16 @@ def upload_image():
 
         return redirect(url_for("upload_image"))
 
-    # GET request - show upload form and list of uploaded files
+    # GET request - show upload form and list of uploaded files for current user
     try:
         uploaded_files = os.listdir(app.config["UPLOAD_FOLDER"])
-        # Filter only image files
-        image_files = [f for f in uploaded_files if allowed_file(f)]
+        # Filter only image files that belong to the current user
+        user_prefix = f"{session['user']}_"
+        image_files = [
+            f
+            for f in uploaded_files
+            if allowed_file(f) and f.startswith(user_prefix)
+        ]
         # Sort by modification time (newest first)
         image_files.sort(
             key=lambda x: os.path.getmtime(
@@ -427,12 +458,21 @@ def upload_image():
             ),
             reverse=True,
         )
-        # Limit to last 12 files
+        # Limit to last 12 files and create display structure
         image_files = image_files[:12]
+        # Create list with display names and full names
+        formatted_files = []
+        for filename in image_files:
+            formatted_files.append(
+                {
+                    "full_name": filename,
+                    "display_name": filename[len(user_prefix) :],
+                }
+            )
     except Exception:
-        image_files = []
+        formatted_files = []
 
-    return render_template("upload.html", uploaded_files=image_files)
+    return render_template("upload.html", uploaded_files=formatted_files)
 
 
 # ---------------- #
@@ -715,7 +755,9 @@ def edit_post(post_id):
         if CACHE_ENABLED:
             clear_cache()
         return redirect(url_for("show_post", post_id=post_id))
-    return render_template("create_post.html", form=edit_form, is_edit=True, post=post)
+    return render_template(
+        "create_post.html", form=edit_form, is_edit=True, post=post
+    )
 
 
 # ----- DELETE A POST BY ID ----- #

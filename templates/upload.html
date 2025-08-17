@@ -34,18 +34,18 @@
 
             {% if uploaded_files %}
             <hr>
-            <h3>Recently Uploaded Images</h3>
+            <h3>Your Recently Uploaded Images</h3>
             <div class="row">
                {% for file in uploaded_files %}
                <div class="col-md-4 mb-3">
                   <div class="card">
-                     <img src="{{ url_for('uploaded_files', filename=file) }}" class="card-img-top" alt="{{ file }}">
+                     <img src="{{ url_for('uploaded_files', filename=file.full_name) }}" class="card-img-top" alt="{{ file.display_name }}">
                      <div class="card-body">
                         <p class="card-text">
-                           <small class="text-muted">{{ file }}</small>
+                           <small class="text-muted">{{ file.display_name }}</small>
                         </p>
                         <input type="text" class="form-control form-control-sm" 
-                               value="{{ url_for('uploaded_files', filename=file, _external=True) }}" 
+                               value="{{ url_for('uploaded_files', filename=file.full_name, _external=True) }}" 
                                readonly onclick="this.select()">
                      </div>
                   </div>

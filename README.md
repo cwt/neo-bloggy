@@ -4,7 +4,7 @@
 
 ## Overview
 
-Medium Bloggy is a blogging platform for amateur writers to showcase their work. This version has been modified to use **NeoSQLite** instead of MongoDB, demonstrating that NeoSQLite can effectively replace PyMongo and MongoDB in a Flask application.
+Medium Bloggy is a blogging platform for amateur writers to showcase their work. This version has been modified to use **[NeoSQLite](https://github.com/cwt/neosqlite)** instead of MongoDB, demonstrating that NeoSQLite can effectively replace PyMongo and MongoDB in a Flask application.
 
 This project showcases how NeoSQLite, a document-oriented database with a MongoDB-like API, can be used as a drop-in replacement for MongoDB in Python web applications, providing a lightweight alternative without requiring external database servers.
 
@@ -29,7 +29,7 @@ We've modified this project to work with NeoSQLite, demonstrating that NeoSQLite
 ### Back-End Technologies
 - Python 3.x
 - Flask 3.1
-- NeoSQLite 0.3.5
+- NeoSQLite 0.3.6 or newer
 - Flask-Bootstrap5 5.3.3
 - Flask-WTF 1.2.2
 
@@ -48,7 +48,7 @@ We've modified this project to work with NeoSQLite, demonstrating that NeoSQLite
 
 The admin panel provides administrators with tools to manage the platform:
 
-1. **User Management**: 
+1. **User Management**:
    - View all registered users
    - Enable/disable user accounts
    - Promote users to administrator status
@@ -67,7 +67,7 @@ To access the admin panel, navigate to `/admin` or click "Admin Panel" in the na
 
 ## NeoSQLite Advantages Demonstrated
 
-This project demonstrates several key advantages of NeoSQLite:
+This project demonstrates several key advantages of [NeoSQLite](https://github.com/cwt/neosqlite):
 
 1. **MongoDB-like API**: Familiar syntax for developers transitioning from MongoDB
 2. **Zero Configuration**: No external database servers required
@@ -76,26 +76,6 @@ This project demonstrates several key advantages of NeoSQLite:
 5. **Performance**: Faster local operations without network latency
 6. **Full-Text Search**: Advanced text search capabilities with customizable tokenizers
 
-## Admin Panel Features
-
-The admin panel provides administrators with tools to manage the platform:
-
-1. **User Management**: 
-   - View all registered users
-   - Enable/disable user accounts
-   - Promote users to administrator status
-   - Disabled users cannot login, create posts, or comment
-
-2. **Content Control**:
-   - Posts and comments from disabled users are automatically hidden from public view
-   - Content remains in the database for auditing purposes
-   - Only administrators can view content from disabled users
-
-3. **Automatic Admin Assignment**:
-   - The first user to register is automatically made an administrator
-   - Administrators can promote other users to admin status
-
-To access the admin panel, navigate to `/admin` or click "Admin Panel" in the navigation menu (only visible to administrators).
 
 ## Modern Features (2025)
 
@@ -168,14 +148,14 @@ os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 mi
    os.environ.setdefault("IP", "127.0.0.1")
    os.environ.setdefault("PORT", "5000")
    os.environ.setdefault("DB_PATH", "medium-bloggy.db")  # Optional, defaults to medium-bloggy.db
-   
+
    # Optional: Configure custom FTS5 tokenizer (NeoSQLite v0.3.5+)
    # os.environ.setdefault("TOKENIZER_NAME", "icu")
    # os.environ.setdefault(
    #     "TOKENIZER_PATH",
    #     "/path/to/libfts5_icu.so",
    # )
-   
+
    # Optional: Configure caching (default: disabled)
    # os.environ.setdefault("CACHE_ENABLED", "True")   # Enable caching
    # os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 minutes)

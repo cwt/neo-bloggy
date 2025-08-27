@@ -42,6 +42,28 @@ We've modified this project to work with NeoSQLite, demonstrating that NeoSQLite
 - **Rich Text Editing**: Markdown support for blog posts
 - **File Uploads**: Image upload functionality for posts
 - **Responsive Design**: Mobile-friendly interface
+- **Admin Panel**: Administrators can manage users and content
+
+## Admin Panel Features
+
+The admin panel provides administrators with tools to manage the platform:
+
+1. **User Management**: 
+   - View all registered users
+   - Enable/disable user accounts
+   - Promote users to administrator status
+   - Disabled users cannot login, create posts, or comment
+
+2. **Content Control**:
+   - Posts and comments from disabled users are automatically hidden from public view
+   - Content remains in the database for auditing purposes
+   - Only administrators can view content from disabled users
+
+3. **Automatic Admin Assignment**:
+   - The first user to register is automatically made an administrator
+   - Administrators can promote other users to admin status
+
+To access the admin panel, navigate to `/admin` or click "Admin Panel" in the navigation menu (only visible to administrators).
 
 ## NeoSQLite Advantages Demonstrated
 
@@ -53,6 +75,27 @@ This project demonstrates several key advantages of NeoSQLite:
 4. **Query Operators**: Support for MongoDB-style query operators including `$or`, `$contains`, etc.
 5. **Performance**: Faster local operations without network latency
 6. **Full-Text Search**: Advanced text search capabilities with customizable tokenizers
+
+## Admin Panel Features
+
+The admin panel provides administrators with tools to manage the platform:
+
+1. **User Management**: 
+   - View all registered users
+   - Enable/disable user accounts
+   - Promote users to administrator status
+   - Disabled users cannot login, create posts, or comment
+
+2. **Content Control**:
+   - Posts and comments from disabled users are automatically hidden from public view
+   - Content remains in the database for auditing purposes
+   - Only administrators can view content from disabled users
+
+3. **Automatic Admin Assignment**:
+   - The first user to register is automatically made an administrator
+   - Administrators can promote other users to admin status
+
+To access the admin panel, navigate to `/admin` or click "Admin Panel" in the navigation menu (only visible to administrators).
 
 ## Modern Features (2025)
 

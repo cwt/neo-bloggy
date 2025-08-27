@@ -1,0 +1,165 @@
+{% include "header.html" %}
+
+<main role="main">
+   <div class="jumbotron profile-jumbotron">
+      <div class="container">
+         <h1 class="display-2">Admin Panel</h1>
+         <hr class="my-4">
+         <p>Manage users and content.</p>
+      </div>
+   </div>
+   
+   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}, {'name': 'Admin Panel', 'url': '#'}] %}
+      {% include "breadcrumb.html" %}
+   {% endwith %}
+   
+   <div class="container">
+      <div class="row">
+         <div class="container">
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+               {{ message }}
+               <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+         </div>
+      </div>
+      
+      <h2 class="your-posts-header">Manage Users</h2>
+      <div class="table-responsive">
+         <table class="table table-striped table-sm">
+            <thead>
+               <tr class="table-row">
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Status</th>
+                  <th>Role</th>
+                  <th>Actions</th>
+               </tr>
+            </thead>
+            <tbody>
+               {% for user in users %}
+               <tr class="table-text">
+                  <td>{{ loop.index }}.</td>
+                  <td>{{ user.name }}</td>
+                  <td>{{ user.email }}</td>
+                  <td>
+                     {% if user.is_active %}
+                     <span class="badge bg-success">Active</span>
+                     {% else %}
+                     <span class="badge bg-danger">Disabled</span>
+                     {% endif %}
+                  </td>
+                  <td>
+                     {% if user.is_admin %}
+                     <span class="badge bg-primary">Admin</span>
+                     {% else %}
+                     <span class="badge bg-secondary">User</span>
+                     {% endif %}
+                  </td>
+                  <td>
+                     {% if not user.is_admin %}
+                     <!-- Toggle User Status Form -->
+                     <form method="POST" action="{{ url_for('toggle_user_status', user_id=user._id) }}" style="display: inline;">
+                        {% if user.is_active %}
+                        <button type="button" class="btn btn-outline-danger btn-sm" 
+                                data-bs-toggle="modal" data-bs-target="#confirmDisableModal{{ user._id }}">
+                           Disable
+                        </button>
+                        {% else %}
+                        <button type="button" class="btn btn-outline-success btn-sm" 
+                                data-bs-toggle="modal" data-bs-target="#confirmEnableModal{{ user._id }}">
+                           Enable
+                        </button>
+                        {% endif %}
+                     </form>
+                     
+                     <!-- Make Admin Form -->
+                     <form method="POST" action="{{ url_for('make_admin', user_id=user._id) }}" style="display: inline;">
+                        <button type="button" class="btn btn-outline-primary btn-sm" 
+                                data-bs-toggle="modal" data-bs-target="#confirmAdminModal{{ user._id }}">
+                           Make Admin
+                        </button>
+                     </form>
+                     
+                     <!-- Disable Confirmation Modal -->
+                     <div class="modal fade" id="confirmDisableModal{{ user._id }}" tabindex="-1" aria-labelledby="confirmDisableModalLabel{{ user._id }}" aria-hidden="true">
+                       <div class="modal-dialog">
+                         <div class="modal-content">
+                           <div class="modal-header">
+                             <h5 class="modal-title" id="confirmDisableModalLabel{{ user._id }}">Confirm Disable User</h5>
+                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                           </div>
+                           <div class="modal-body">
+                             Are you sure you want to disable user <strong>{{ user.name }}</strong>? They will no longer be able to login or create content.
+                           </div>
+                           <div class="modal-footer">
+                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                             <form method="POST" action="{{ url_for('toggle_user_status', user_id=user._id) }}" style="display: inline;">
+                               <button type="submit" class="btn btn-danger">Yes, Disable User</button>
+                             </form>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                     
+                     <!-- Enable Confirmation Modal -->
+                     <div class="modal fade" id="confirmEnableModal{{ user._id }}" tabindex="-1" aria-labelledby="confirmEnableModalLabel{{ user._id }}" aria-hidden="true">
+                       <div class="modal-dialog">
+                         <div class="modal-content">
+                           <div class="modal-header">
+                             <h5 class="modal-title" id="confirmEnableModalLabel{{ user._id }}">Confirm Enable User</h5>
+                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                           </div>
+                           <div class="modal-body">
+                             Are you sure you want to enable user <strong>{{ user.name }}</strong>? They will be able to login and create content again.
+                           </div>
+                           <div class="modal-footer">
+                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                             <form method="POST" action="{{ url_for('toggle_user_status', user_id=user._id) }}" style="display: inline;">
+                               <button type="submit" class="btn btn-success">Yes, Enable User</button>
+                             </form>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                     
+                     <!-- Make Admin Confirmation Modal -->
+                     <div class="modal fade" id="confirmAdminModal{{ user._id }}" tabindex="-1" aria-labelledby="confirmAdminModalLabel{{ user._id }}" aria-hidden="true">
+                       <div class="modal-dialog">
+                         <div class="modal-content">
+                           <div class="modal-header">
+                             <h5 class="modal-title" id="confirmAdminModalLabel{{ user._id }}">Confirm Make Admin</h5>
+                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                           </div>
+                           <div class="modal-body">
+                             Are you sure you want to make <strong>{{ user.name }}</strong> an administrator? They will have full access to manage users and content.
+                           </div>
+                           <div class="modal-footer">
+                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                             <form method="POST" action="{{ url_for('make_admin', user_id=user._id) }}" style="display: inline;">
+                               <button type="submit" class="btn btn-primary">Yes, Make Admin</button>
+                             </form>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                     {% else %}
+                     <span class="text-muted">Admin user</span>
+                     {% endif %}
+                  </td>
+               </tr>
+               {% endfor %}
+            </tbody>
+         </table>
+      </div>
+   </div>
+</main>
+<br>
+<hr>
+{% include "footer.html" %}

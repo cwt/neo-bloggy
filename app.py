@@ -11,6 +11,7 @@ from flask import (
     jsonify,
     send_from_directory,
     after_this_request,
+    make_response,
 )
 from flask_bootstrap import Bootstrap5
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -22,7 +23,7 @@ import markdown
 import bleach
 from bleach.css_sanitizer import CSSSanitizer
 import re
-from functools import lru_cache
+from functools import lru_cache, wraps
 import time
 import requests
 from PIL import Image
@@ -39,6 +40,15 @@ if os.path.exists("env.py"):
 app = Flask(__name__)
 
 app.secret_key = os.environ.get("SECRET_KEY")
+# Configure session handling for better persistence
+app.config["SESSION_COOKIE_SECURE"] = (
+    False  # Set to True in production with HTTPS
+)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["PERMANENT_SESSION_LIFETIME"] = 86400  # 24 hours
+app.config["SESSION_REFRESH_EACH_REQUEST"] = True
+
 bootstrap = Bootstrap5(app)
 
 from forms import (
@@ -215,11 +225,22 @@ def clear_cache():
 # Example of how to use caching for expensive operations
 @cached_result
 def get_post_with_comments(post_id):
-    """Get a post with its comments, cached for performance."""
+    """Get a post with its comments, cached for performance.
+    Only show comments from active users.
+    """
     db = get_db()
     post = db.blog_posts.find_one({"_id": int(post_id)})
     if post:
         comments = list(db.blog_comments.find({"parent_post": int(post_id)}))
+        # Filter comments to only show those from active users
+        active_users = [
+            user["name"] for user in db.users.find({"is_active": True})
+        ]
+        comments = [
+            comment
+            for comment in comments
+            if comment["comment_author"] in active_users
+        ]
         return post, comments
     return None, []
 
@@ -300,15 +321,82 @@ def close_db(error):
         g.pop("db", None)
 
 
+def get_current_user():
+    """
+    Get the current logged-in user from session.
+    Returns None if no user is logged in or if there's an issue.
+    """
+    if "user" not in session:
+        return None
+
+    try:
+        db = get_db()
+        user = db.users.find_one({"name": session["user"]})
+        # Check if user exists and is active
+        if user and user.get("is_active", True):
+            return user
+        else:
+            # If user is disabled or doesn't exist, clear the session
+            session.clear()
+            return None
+    except Exception:
+        # If there's any database error, clear the session
+        session.clear()
+        return None
+
+
+def login_required(f):
+    """
+    Decorator to require login for routes.
+    """
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        current_user = get_current_user()
+        if not current_user:
+            flash("You need to login to access this page.")
+            return redirect(url_for("login"))
+        return f(current_user=current_user, *args, **kwargs)
+
+    return decorated_function
+
+
+def admin_required(f):
+    """
+    Decorator to require admin privileges for routes.
+    """
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        current_user = get_current_user()
+        if not current_user:
+            flash("You need to login to access this page.")
+            return redirect(url_for("login"))
+        if not current_user.get("is_admin", False):
+            flash("You don't have permission to access this page.")
+            return redirect(url_for("get_all_posts"))
+        return f(current_user=current_user, *args, **kwargs)
+
+    return decorated_function
+
+
 @app.context_processor
 def inject_site_details():
     """Inject site details into all templates."""
+    # Get current user if logged in
+    user = get_current_user()
+
+    # Update session if user is logged in
+    if user:
+        session["user"] = user["name"]
+
     return {
         "site_title": os.environ.get("SITE_TITLE", "Medium Bloggy"),
         "site_author": os.environ.get("SITE_AUTHOR", "Medium Bloggy"),
         "site_description": os.environ.get(
             "SITE_DESCRIPTION", "Blogging Ireland; journalism"
         ),
+        "user": user,
     }
 
 
@@ -451,12 +539,11 @@ def list_images():
 
 
 @app.route("/upload-image", methods=["GET", "POST"])
-def upload_image():
-    """Handle image uploads from the web interface."""
-    # Check if user is logged in
-    if "user" not in session:
-        return redirect(url_for("login"))
-
+@login_required
+def upload_image(current_user):
+    """Handle image uploads from the web interface.
+    Prevent disabled users from uploading images.
+    """
     if request.method == "POST":
         # Check if file is in request
         if "file" not in request.files:
@@ -483,7 +570,7 @@ def upload_image():
             filename = secure_filename(file.filename)
             name, ext = os.path.splitext(filename)
             unique_filename = (
-                f"{session['user']}_{name}_{uuid.uuid4().hex}.webp"
+                f"{current_user['name']}_{name}_{uuid.uuid4().hex}.webp"
             )
 
             # Save file as WebP
@@ -527,7 +614,7 @@ def upload_image():
     try:
         uploaded_files = os.listdir(app.config["UPLOAD_FOLDER"])
         # Filter only image files that belong to the current user
-        user_prefix = f"{session['user']}_"
+        user_prefix = f"{current_user['name']}_"
         image_files = [
             f
             for f in uploaded_files
@@ -568,7 +655,11 @@ def get_all_posts():
     """
     Read all blog posts from the database.
     """
-    if CACHE_ENABLED:
+    # Get current user with robust session checking
+    current_user = get_current_user()
+
+    if CACHE_ENABLED and not current_user:
+        # Only cache for non-logged-in users
         # Create a cache key for the main posts list
         cache_key = get_cache_key("get_all_posts")
         current_time = time.time()
@@ -577,18 +668,46 @@ def get_all_posts():
         if cache_key in cache_storage:
             result, timestamp = cache_storage[cache_key]
             if current_time - timestamp < CACHE_TIMEOUT:
-                return result
+                response = make_response(result)
+                # Add cache control for anonymous users
+                response.headers["Cache-Control"] = (
+                    "public, max-age=300"  # Cache for 5 minutes
+                )
+                return response
 
         # Generate new result and cache it
         db = get_db()
-        posts = list(db.blog_posts.find())
+        # Only show posts from active users
+        active_users = [
+            user["name"] for user in db.users.find({"is_active": True})
+        ]
+        posts = list(db.blog_posts.find({"author": {"$in": active_users}}))
         result = render_template("index.html", all_posts=posts)
         cache_storage[cache_key] = (result, current_time)
-        return result
+        response = make_response(result)
+        # Add cache control for anonymous users
+        response.headers["Cache-Control"] = (
+            "public, max-age=300"  # Cache for 5 minutes
+        )
+        return response
     else:
         db = get_db()
-        posts = list(db.blog_posts.find())
-        return render_template("index.html", all_posts=posts)
+        # Only show posts from active users
+        active_users = [
+            user["name"] for user in db.users.find({"is_active": True})
+        ]
+        posts = list(db.blog_posts.find({"author": {"$in": active_users}}))
+        response = make_response(
+            render_template("index.html", all_posts=posts, user=current_user)
+        )
+        # Don't cache for logged-in users
+        if current_user:
+            response.headers["Cache-Control"] = (
+                "no-cache, no-store, must-revalidate"
+            )
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
 
 
 # ----- REGISTER ----- #
@@ -626,11 +745,24 @@ def register():
                     method="pbkdf2:sha256",
                     salt_length=8,
                 ),
+                "is_admin": False,  # Default to non-admin
+                "is_active": True,  # Default to active
             }
             # insert new_user into the database
             users.insert_one(new_user)
 
+            # Check if there are any admins, if not, make this user an admin
+            admin_count = users.count_documents({"is_admin": True})
+            if admin_count == 0:
+                users.update_one(
+                    {"_id": new_user["_id"]}, {"$set": {"is_admin": True}}
+                )
+                flash(
+                    "You are the first user. You have been made an administrator."
+                )
+
             # put the new user into 'session' cookie
+            session.permanent = True  # Make the session permanent
             session["user"] = form.name.data
             flash("Registration Successful")
             return redirect(url_for("profile", username=session["user"]))
@@ -647,6 +779,7 @@ def login():
     Login to the site.
 
     Validation included.
+    Prevent disabled users from logging in.
     """
     form = LoginForm()
     if form.validate_on_submit():
@@ -667,7 +800,14 @@ def login():
             elif not check_password_hash(existing_user["password"], password):
                 flash("That email and password dont match, please try again.")
                 return redirect(url_for("login"))
+            # Check if user account is disabled
+            elif not existing_user.get("is_active", True):
+                flash(
+                    "Your account has been disabled. Please contact an administrator."
+                )
+                return redirect(url_for("login"))
             else:
+                session.permanent = True  # Make the session permanent
                 session["user"] = existing_user["name"]
                 flash(f"Welcome Back, {existing_user['name'].title()}")
                 return redirect(url_for("profile", username=session["user"]))
@@ -679,14 +819,15 @@ def login():
 
 # ----- PROFILE PAGE ----- #
 @app.route("/profile/<username>", methods=["GET", "POST"])
-def profile(username):
+@login_required
+def profile(current_user, username):
     """
     Direct the user to their Profile page.
 
     Retrieve all the users Posts.
     """
     # Security check: Only allow users to view their own profile
-    if "user" not in session or session["user"] != username:
+    if current_user["name"] != username:
         flash("You can only view your own profile.")
         return redirect(url_for("login"))
 
@@ -697,25 +838,30 @@ def profile(username):
         return redirect(url_for("login"))
 
     posts = db.blog_posts.find({"author": username})
-    return render_template("profile.html", username=username, posts=posts)
+    return render_template(
+        "profile.html", username=username, posts=posts, user=user
+    )
 
 
 # ----- EDIT PROFILE ----- #
 @app.route("/edit-profile", methods=["GET", "POST"])
-def edit_profile():
+@login_required
+def edit_profile(current_user):
     """
     Edit the user's profile.
+    Prevent disabled users from editing their profile.
     """
-    if "user" not in session:
-        return redirect(url_for("login"))
+    # Check if user is active (this is already checked in get_current_user, but being thorough)
+    if not current_user.get("is_active", True):
+        flash("Your account has been disabled. You cannot edit your profile.")
+        return redirect(url_for("get_all_posts"))
 
-    db = get_db()
-    user = db.users.find_one({"name": session["user"]})
-    form = EditProfileForm(obj=user)
+    form = EditProfileForm(obj=current_user)
 
     if form.validate_on_submit():
+        db = get_db()
         # Check if the new email already exists
-        if form.email.data != user["email"]:
+        if form.email.data != current_user["email"]:
             if db.users.find_one({"email": form.email.data}):
                 flash("That email is already in use.", "error")
                 return render_template("edit_profile.html", form=form)
@@ -735,14 +881,15 @@ def edit_profile():
                 form.password.data, method="pbkdf2:sha256", salt_length=8
             )
 
-        db.users.update_one({"_id": user["_id"]}, {"$set": update_data})
+        db.users.update_one({"_id": current_user["_id"]}, {"$set": update_data})
+        session.permanent = True  # Make sure session remains permanent
         session["user"] = form.name.data  # Update session with new name
         flash("Profile updated successfully!")
         return redirect(url_for("profile", username=session["user"]))
     elif request.method == "GET":
-        form.name.data = user["name"]
-        form.email.data = user["email"]
-        form.security_question.data = user.get("security_question", "")
+        form.name.data = current_user["name"]
+        form.email.data = current_user["email"]
+        form.security_question.data = current_user.get("security_question", "")
 
     return render_template("edit_profile.html", form=form)
 
@@ -755,8 +902,19 @@ def logout():
 
     Redirect the user to the home page.
     """
-    session.pop("user")
-    return redirect(url_for("get_all_posts"))
+    # Clear all session data
+    session.clear()
+
+    # Clear cache to ensure no cached content shows logged-in state
+    if CACHE_ENABLED:
+        clear_cache()
+
+    response = redirect(url_for("get_all_posts"))
+    # Add cache control headers to prevent caching of redirect response
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 # ----- READ A POST BY ITS ID ----- #
@@ -766,6 +924,7 @@ def show_post(post_id):
     Read a Post by Id.
 
     Allow the user to Comment if logged in.
+    Only show posts and comments from active users.
     """
     try:
         form = CommentForm()
@@ -788,15 +947,41 @@ def show_post(post_id):
             flash("Post not found.")
             return redirect(url_for("get_all_posts"))
 
+        # Check if the post author is active
+        post_author = db.users.find_one({"name": requested_post["author"]})
+        if not post_author or not post_author.get("is_active", True):
+            flash("The requested post is not available.")
+            return redirect(url_for("get_all_posts"))
+
+        # Filter comments to only show those from active users
+        active_users = [
+            user["name"] for user in db.users.find({"is_active": True})
+        ]
+        if hasattr(requested_post_comments, "__iter__"):
+            requested_post_comments = [
+                comment
+                for comment in requested_post_comments
+                if comment["comment_author"] in active_users
+            ]
+        else:
+            # If it's a cursor, convert to list and filter
+            requested_post_comments = [
+                comment
+                for comment in list(requested_post_comments)
+                if comment["comment_author"] in active_users
+            ]
+
         # commenting on a post
         if form.validate_on_submit():
-            if not session.get("user"):
+            # Get current user with robust session checking
+            current_user = get_current_user()
+            if not current_user:
                 flash("You need to login or register to comment.")
                 return redirect(url_for("login"))
 
             new_comment = {
                 "text": form.comment_text.data,
-                "comment_author": session["user"],
+                "comment_author": current_user["name"],
                 "parent_post": int(post_id),
             }
 
@@ -822,50 +1007,51 @@ def show_post(post_id):
 
 # ----- CREATE A NEW POST ----- #
 @app.route("/create-post", methods=["GET", "POST"])
-def create_post():
+@login_required
+def create_post(current_user):
     """
     Create a new Post.
 
     Inject all form data to a new blog post document on submit.
+    Prevent disabled users from creating posts.
     """
-    if "user" in session:
-        # create a Form for data entry
-        form = CreatePostForm()
-        if form.validate_on_submit():
-            try:
-                db = get_db()
-                new_post = {
-                    "title": form.title.data,
-                    "subtitle": form.subtitle.data,
-                    "body": form.body.data,
-                    "img_url": form.img_url.data,
-                    "author": session["user"],
-                    "date": date.today().strftime("%B %d, %Y"),
-                }
-                db.blog_posts.insert_one(new_post)
-                flash("Post Successfully Added")
-                # Clear cache since we've added a new post
-                if CACHE_ENABLED:
-                    # Only clear the main posts list cache
-                    cache_key = get_cache_key("get_all_posts")
-                    if cache_key in cache_storage:
-                        del cache_storage[cache_key]
-                return redirect(url_for("get_all_posts"))
-            except Exception as e:
-                flash(f"Failed to create post: {str(e)}")
-                return render_template("create_post.html", form=form)
-        return render_template("create_post.html", form=form)
-    else:
-        return redirect(url_for("login"))
+    # create a Form for data entry
+    form = CreatePostForm()
+    if form.validate_on_submit():
+        try:
+            db = get_db()
+            new_post = {
+                "title": form.title.data,
+                "subtitle": form.subtitle.data,
+                "body": form.body.data,
+                "img_url": form.img_url.data,
+                "author": current_user["name"],
+                "date": date.today().strftime("%B %d, %Y"),
+            }
+            db.blog_posts.insert_one(new_post)
+            flash("Post Successfully Added")
+            # Clear cache since we've added a new post
+            if CACHE_ENABLED:
+                # Only clear the main posts list cache
+                cache_key = get_cache_key("get_all_posts")
+                if cache_key in cache_storage:
+                    del cache_storage[cache_key]
+            return redirect(url_for("get_all_posts"))
+        except Exception as e:
+            flash(f"Failed to create post: {str(e)}")
+            return render_template("create_post.html", form=form)
+    return render_template("create_post.html", form=form)
 
 
 # ----- EDIT A POST BY ID ----- #
 @app.route("/edit-post/<post_id>", methods=["GET", "POST"])
-def edit_post(post_id):
+@login_required
+def edit_post(current_user, post_id):
     """
     Edit a Post by Id.
 
     Update all Post data on submit.
+    Prevent disabled users from editing posts.
     """
     try:
         db = get_db()
@@ -875,11 +1061,16 @@ def edit_post(post_id):
             flash("Post not found.")
             return redirect(url_for("get_all_posts"))
 
+        # Check if user is the author of the post
+        if post["author"] != current_user["name"]:
+            flash("You can only edit your own posts.")
+            return redirect(url_for("get_all_posts"))
+
         edit_form = CreatePostForm(
             title=post["title"],
             subtitle=post["subtitle"],
             img_url=post["img_url"],
-            author=session["user"],
+            author=current_user["name"],
             body=post["body"],
         )
         if edit_form.validate_on_submit():
@@ -916,11 +1107,13 @@ def edit_post(post_id):
 
 # ----- DELETE A POST BY ID ----- #
 @app.route("/delete/<post_id>")
-def delete_post(post_id):
+@login_required
+def delete_post(current_user, post_id):
     """
     Delete a Post by Id.
 
     Redirect back to main page on submit.
+    Prevent disabled users from deleting posts.
     """
     try:
         db = get_db()
@@ -931,7 +1124,7 @@ def delete_post(post_id):
             return redirect(url_for("get_all_posts"))
 
         # Check if the current user is the author of the post
-        if post["author"] != session.get("user"):
+        if post["author"] != current_user["name"]:
             flash("You can only delete your own posts.")
             return redirect(url_for("get_all_posts"))
 
@@ -955,11 +1148,39 @@ def delete_post(post_id):
 
 # ----- DELETE A COMMENT BY ID ----- #
 @app.route("/delete_comment/<comment_id>")
-def delete_comment(comment_id):
+@login_required
+def delete_comment(current_user, comment_id):
     """
     Delete a Comment by Id.
+    Only allow the comment author (if active) or admins to delete comments.
     """
     db = get_db()
+
+    # Get the comment to delete
+    comment = db.blog_comments.find_one({"_id": int(comment_id)})
+    if not comment:
+        flash("Comment not found.")
+        post_id = request.args.get("post_id")
+        return redirect(url_for("show_post", post_id=post_id))
+
+    # Check if user is admin or the comment author
+    is_admin = current_user.get("is_admin", False)
+    is_comment_author = comment["comment_author"] == current_user["name"]
+
+    # If user is not admin and not the comment author, deny access
+    if not is_admin and not is_comment_author:
+        flash("You can only delete your own comments.")
+        post_id = request.args.get("post_id")
+        return redirect(url_for("show_post", post_id=post_id))
+
+    # If user is not admin but is the comment author, check if they're active
+    if not is_admin and is_comment_author:
+        if not current_user.get("is_active", True):
+            flash("Your account has been disabled. You cannot delete comments.")
+            post_id = request.args.get("post_id")
+            return redirect(url_for("show_post", post_id=post_id))
+
+    # Proceed with deletion
     db.blog_comments.delete_one({"_id": int(comment_id)})
     flash("Comment Successfully Deleted")
     post_id = request.args.get("post_id")
@@ -976,7 +1197,11 @@ def delete_comment(comment_id):
 def search():
     """
     Search for a Post by Title, Subtitle.
+    Only show posts from active users.
     """
+    # Get current user with robust session checking
+    current_user = get_current_user()
+
     db = get_db()
     query = request.form.get("query")
 
@@ -985,12 +1210,25 @@ def search():
         flash("Invalid search query. Please use only text in search.")
         return redirect(url_for("get_all_posts"))
 
+    # Get active users
+    active_users = [user["name"] for user in db.users.find({"is_active": True})]
+
     # For neosqlite, we'll use the $text operator with FTS for efficient text search
     if query:
         try:
             # Use neosqlite's $text with $search for FTS-based search
             # This will search across all FTS-indexed fields (title and subtitle)
-            posts = list(db.blog_posts.find({"$text": {"$search": query}}))
+            # Only show posts from active users
+            posts = list(
+                db.blog_posts.find(
+                    {
+                        "$and": [
+                            {"$text": {"$search": query}},
+                            {"author": {"$in": active_users}},
+                        ]
+                    }
+                )
+            )
         except Exception as e:
             # If FTS query fails due to special characters, fall back to regex search
             # This is a more basic search but will handle special characters
@@ -1000,26 +1238,42 @@ def search():
             posts = list(
                 db.blog_posts.find(
                     {
-                        "$or": [
+                        "$and": [
                             {
-                                "title": {
-                                    "$regex": escaped_query,
-                                    "$options": "i",
-                                }
+                                "$or": [
+                                    {
+                                        "title": {
+                                            "$regex": escaped_query,
+                                            "$options": "i",
+                                        }
+                                    },
+                                    {
+                                        "subtitle": {
+                                            "$regex": escaped_query,
+                                            "$options": "i",
+                                        }
+                                    },
+                                ]
                             },
-                            {
-                                "subtitle": {
-                                    "$regex": escaped_query,
-                                    "$options": "i",
-                                }
-                            },
+                            {"author": {"$in": active_users}},
                         ]
                     }
                 )
             )
     else:
-        posts = list(db.blog_posts.find())
-    return render_template("index.html", all_posts=posts, search_query=query)
+        # Only show posts from active users
+        posts = list(db.blog_posts.find({"author": {"$in": active_users}}))
+
+    response = make_response(
+        render_template(
+            "index.html", all_posts=posts, search_query=query, user=current_user
+        )
+    )
+    # Don't cache search results
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 def is_suspicious_input(text):
@@ -1087,6 +1341,7 @@ def is_suspicious_input(text):
 def recover_password():
     """
     Recover password using security question.
+    Prevent disabled users from recovering password.
     """
     form = PasswordRecoveryForm()
     if form.validate_on_submit():
@@ -1098,6 +1353,13 @@ def recover_password():
 
         if not user:
             flash("No account found with that email address.")
+            return render_template("recover_password.html", form=form)
+
+        # Check if user account is disabled
+        if not user.get("is_active", True):
+            flash(
+                "Your account has been disabled. Please contact an administrator."
+            )
             return render_template("recover_password.html", form=form)
 
         # check if security question and answer match
@@ -1123,6 +1385,81 @@ def recover_password():
             flash("Security question or answer is incorrect.")
 
     return render_template("recover_password.html", form=form)
+
+
+# ----- ADMIN PANEL ----- #
+@app.route("/admin")
+@admin_required
+def admin_panel(current_user):
+    """
+    Admin panel to manage users and content.
+    """
+    db = get_db()
+    # Get all users (except the current admin)
+    users = list(db.users.find({"name": {"$ne": current_user["name"]}}))
+
+    return render_template("admin.html", users=users)
+
+
+@app.route("/admin/toggle_user_status/<user_id>", methods=["POST"])
+@admin_required
+def toggle_user_status(current_user, user_id):
+    """
+    Toggle a user's active status (enable/disable).
+    """
+    db = get_db()
+    # Find the user to toggle
+    user_to_toggle = db.users.find_one({"_id": int(user_id)})
+
+    if not user_to_toggle:
+        flash("User not found.")
+        return redirect(url_for("admin_panel"))
+
+    # Prevent admins from disabling other admins
+    if user_to_toggle.get("is_admin", False):
+        flash("You cannot disable another admin user.")
+        return redirect(url_for("admin_panel"))
+
+    # Toggle the user's active status
+    new_status = not user_to_toggle.get("is_active", True)
+    db.users.update_one(
+        {"_id": int(user_id)}, {"$set": {"is_active": new_status}}
+    )
+
+    status_text = "enabled" if new_status else "disabled"
+    flash(f"User '{user_to_toggle['name']}' has been {status_text}.")
+
+    # Clear cache since we've modified user status
+    if CACHE_ENABLED:
+        clear_cache()
+
+    return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/make_admin/<user_id>", methods=["POST"])
+@admin_required
+def make_admin(current_user, user_id):
+    """
+    Make a user an admin.
+    """
+    db = get_db()
+    # Find the user to make admin
+    user_to_make_admin = db.users.find_one({"_id": int(user_id)})
+
+    if not user_to_make_admin:
+        flash("User not found.")
+        return redirect(url_for("admin_panel"))
+
+    # Make the user an admin
+    db.users.update_one({"_id": int(user_id)}, {"$set": {"is_admin": True}})
+
+    flash(f"User '{user_to_make_admin['name']}' is now an admin.")
+
+    # Clear cache since we've modified user permissions
+    if CACHE_ENABLED:
+        clear_cache()
+
+    return redirect(url_for("admin_panel"))
 
 
 # ----- SITEMAP ----- #

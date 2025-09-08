@@ -304,6 +304,10 @@ def get_db():
             g.db.blog_posts.create_index(
                 "subtitle", fts=True, tokenizer=TOKENIZER_NAME
             )
+            # Add FTS index for body content to enable comprehensive search
+            g.db.blog_posts.create_index(
+                "body", fts=True, tokenizer=TOKENIZER_NAME
+            )
         except Exception as e:
             # Fallback to connection without tokenizers
             print(f"Warning: Failed to initialize with tokenizers: {e}")
@@ -311,6 +315,8 @@ def get_db():
             # Create FTS indexes without specific tokenizer
             g.db.blog_posts.create_index("title", fts=True)
             g.db.blog_posts.create_index("subtitle", fts=True)
+            # Add FTS index for body content to enable comprehensive search
+            g.db.blog_posts.create_index("body", fts=True)
 
         # Initialize GridFS for file storage
         try:
@@ -1301,11 +1307,11 @@ def delete_comment(current_user, comment_id):
     return redirect(url_for("show_post", post_id=post_id))
 
 
-# ----- SEARCH FOR A POST BY TITLE, SUBTITLE ----- #
+# ----- SEARCH FOR A POST BY TITLE, SUBTITLE, BODY ----- #
 @app.route("/search", methods=["GET", "POST"])
 def search():
     """
-    Search for a Post by Title, Subtitle.
+    Search for a Post by Title, Subtitle, and Body Content.
     Only show posts from active users.
     """
     # Get current user with robust session checking
@@ -1326,7 +1332,7 @@ def search():
     if query:
         try:
             # Use neosqlite's $text with $search for FTS-based search
-            # This will search across all FTS-indexed fields (title and subtitle)
+            # This will search across all FTS-indexed fields (title, subtitle, and body)
             # Only show posts from active users
             posts = list(
                 db.blog_posts.find(
@@ -1338,6 +1344,18 @@ def search():
                     }
                 )
             )
+
+            # Add search relevance scoring
+            # NeoSQLite provides a textScore metadata field when using $text search
+            for post in posts:
+                if hasattr(post, "_meta") and "textScore" in post._meta:
+                    post["search_score"] = post._meta["textScore"]
+                else:
+                    post["search_score"] = 0
+
+            # Sort by search relevance (highest score first)
+            posts.sort(key=lambda x: x.get("search_score", 0), reverse=True)
+
         except Exception as e:
             # If FTS query fails due to special characters, fall back to regex search
             # This is a more basic search but will handle special characters
@@ -1358,6 +1376,12 @@ def search():
                                     },
                                     {
                                         "subtitle": {
+                                            "$regex": escaped_query,
+                                            "$options": "i",
+                                        }
+                                    },
+                                    {
+                                        "body": {
                                             "$regex": escaped_query,
                                             "$options": "i",
                                         }
@@ -1567,6 +1591,25 @@ def make_admin(current_user, user_id):
     # Clear cache since we've modified user permissions
     if CACHE_ENABLED:
         clear_cache()
+
+    return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/rebuild-search-indexes", methods=["POST"])
+@admin_required
+def rebuild_search_indexes(current_user):
+    """
+    Rebuild all FTS indexes for blog posts.
+    """
+    try:
+        db = get_db()
+        # Rebuild FTS indexes
+        db.blog_posts.reindex("title")
+        db.blog_posts.reindex("subtitle")
+        db.blog_posts.reindex("body")
+        flash("Search indexes rebuilt successfully!")
+    except Exception as e:
+        flash(f"Failed to rebuild search indexes: {str(e)}")
 
     return redirect(url_for("admin_panel"))
 

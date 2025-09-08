@@ -158,6 +158,17 @@
             </tbody>
          </table>
       </div>
+      
+      <h2 class="your-posts-header">System Maintenance</h2>
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Search Indexes</h5>
+          <p class="card-text">Rebuild the full-text search indexes for blog posts to ensure search results are up-to-date.</p>
+          <form method="POST" action="{{ url_for('rebuild_search_indexes') }}">
+            <button type="submit" class="btn btn-warning">Rebuild Search Indexes</button>
+          </form>
+        </div>
+      </div>
    </div>
 </main>
 <br>

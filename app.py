@@ -437,7 +437,7 @@ def inject_site_details():
 
 @app.route("/gridfs/<int:file_id>")
 def gridfs_file(file_id):
-    """Serve files from GridFS."""
+    """Serve files from GridFS with proper caching headers."""
     try:
         gfs = get_gridfs()
         if gfs is None:
@@ -449,16 +449,49 @@ def gridfs_file(file_id):
         # Get file metadata
         filename = grid_out.filename
         content_type = "image/webp"  # We're always saving as WebP
+        file_length = grid_out.length
+        upload_date = grid_out.upload_date
+
+        # Generate ETag based on file ID and upload date
+        import hashlib
+
+        etag_base = f"{file_id}_{upload_date if upload_date else file_id}"
+        etag = hashlib.md5(etag_base.encode()).hexdigest()
+
+        # Check if client has cached version
+        if request.headers.get("If-None-Match") == etag:
+            return "", 304  # Not modified
 
         # Create response with file data
         response = make_response(grid_out.read())
         response.headers["Content-Type"] = content_type
         response.headers["Content-Disposition"] = f"inline; filename={filename}"
+
+        # Add caching headers
+        response.headers["Cache-Control"] = (
+            "public, max-age=31536000"  # Cache for 1 year
+        )
+        response.headers["ETag"] = etag
+        response.headers["Content-Length"] = str(file_length)
+
+        # Add Last-Modified header if upload_date is available
+        if upload_date:
+            # Ensure upload_date is a datetime object
+            if hasattr(upload_date, "strftime"):
+                response.headers["Last-Modified"] = upload_date.strftime(
+                    "%a, %d %b %Y %H:%M:%S GMT"
+                )
+            else:
+                response.headers["Last-Modified"] = str(upload_date)
+
         return response
     except neosqlite.gridfs.errors.NoFile:
         return "File not found", 404
     except Exception as e:
         print(f"Error serving GridFS file: {e}")
+        import traceback
+
+        traceback.print_exc()
         return "Error retrieving file", 500
 
 

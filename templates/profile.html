@@ -6,10 +6,10 @@
          <h1 class="display-2">{{ username.title() }}'s Profile</h1>
          <hr class="my-4">
          <p>Manage your posts and comments.</p>
-         {% if user.is_admin %}
+         {% if user and user.is_admin %}
          <span class="badge bg-primary" style="position: absolute; top: 1rem; right: 1rem;">Administrator</span>
          {% endif %}
-         {% if not user.is_active %}
+         {% if user and not user.is_active %}
          <span class="badge bg-danger" style="position: absolute; top: 3rem; right: 1rem;">Account Disabled</span>
          {% endif %}
          <a href="{{ url_for('edit_profile') }}" class="btn btn-primary" style="position: absolute; bottom: 1rem; right: 1rem;">Edit Profile</a>

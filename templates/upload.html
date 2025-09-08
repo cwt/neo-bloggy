@@ -52,13 +52,13 @@
                {% for file in uploaded_files %}
                <div class="col-md-4 mb-3">
                   <div class="card">
-                     <img src="{{ url_for('uploaded_files', filename=file.full_name) }}" class="card-img-top" alt="{{ file.display_name }}">
+                     <img src="{{ url_for('gridfs_file', file_id=file.file_id) }}" class="card-img-top" alt="{{ file.display_name }}">
                      <div class="card-body">
                         <p class="card-text">
                            <small class="text-muted">{{ file.display_name }}</small>
                         </p>
                         <input type="text" class="form-control form-control-sm" 
-                               value="{{ url_for('uploaded_files', filename=file.full_name, _external=True) }}" 
+                               value="{{ url_for('gridfs_file', file_id=file.file_id, _external=True) }}" 
                                readonly onclick="this.select()">
                      </div>
                   </div>

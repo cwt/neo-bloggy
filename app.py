@@ -61,10 +61,11 @@ from forms import (
 )
 
 # Configure file upload settings
+# Note: We're now using GridFS for file storage, so UPLOAD_FOLDER is only used for temporary operations
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max file size
 
-# Create upload directory if it doesn't exist
+# Create upload directory if it doesn't exist (might be needed for temporary operations)
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
 # Allowed file extensions (for upload validation only, all files are converted to WebP)
@@ -310,7 +311,29 @@ def get_db():
             # Create FTS indexes without specific tokenizer
             g.db.blog_posts.create_index("title", fts=True)
             g.db.blog_posts.create_index("subtitle", fts=True)
+
+        # Initialize GridFS for file storage
+        try:
+            g.gfs = neosqlite.gridfs.GridFSBucket(g.db.db)
+        except Exception as e:
+            print(f"Warning: Failed to initialize GridFS: {e}")
+            g.gfs = None
+
     return g.db
+
+
+def get_gridfs():
+    """Get GridFS instance for the current request."""
+    if "gfs" not in g:
+        db = get_db()  # This will initialize both db and gfs
+        if "gfs" not in g:
+            # If gfs wasn't initialized in get_db, try to initialize it now
+            try:
+                g.gfs = neosqlite.gridfs.GridFSBucket(g.db.db)
+            except Exception as e:
+                print(f"Warning: Failed to initialize GridFS: {e}")
+                g.gfs = None
+    return g.get("gfs", None)
 
 
 @app.teardown_appcontext
@@ -319,6 +342,7 @@ def close_db(error):
     if "db" in g:
         g.db.close()
         g.pop("db", None)
+    # GridFS doesn't need explicit closing as it uses the same database connection
 
 
 def get_current_user():
@@ -405,10 +429,31 @@ def inject_site_details():
 # ---------------- #
 
 
-@app.route("/files/<path:filename>")
-def uploaded_files(filename):
-    """Serve uploaded files."""
-    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+@app.route("/gridfs/<int:file_id>")
+def gridfs_file(file_id):
+    """Serve files from GridFS."""
+    try:
+        gfs = get_gridfs()
+        if gfs is None:
+            return "File storage system unavailable", 500
+
+        # Open download stream from GridFS
+        grid_out = gfs.open_download_stream(file_id)
+
+        # Get file metadata
+        filename = grid_out.filename
+        content_type = "image/webp"  # We're always saving as WebP
+
+        # Create response with file data
+        response = make_response(grid_out.read())
+        response.headers["Content-Type"] = content_type
+        response.headers["Content-Disposition"] = f"inline; filename={filename}"
+        return response
+    except neosqlite.gridfs.errors.NoFile:
+        return "File not found", 404
+    except Exception as e:
+        print(f"Error serving GridFS file: {e}")
+        return "Error retrieving file", 500
 
 
 @app.route("/upload", methods=["POST"])
@@ -446,7 +491,7 @@ def upload():
         name, ext = os.path.splitext(filename)
         unique_filename = f"{session['user']}_{name}_{uuid.uuid4().hex}.webp"
 
-        # Save file as WebP
+        # Save file to GridFS as WebP
         try:
             # Reset file pointer to beginning
             file.seek(0)
@@ -461,18 +506,37 @@ def upload():
                 )
                 img = background
 
-            # Save as WebP with good quality
+            # Save as WebP to a BytesIO buffer
+            img_buffer = io.BytesIO()
             img.save(
-                os.path.join(app.config["UPLOAD_FOLDER"], unique_filename),
+                img_buffer,
                 "WEBP",
                 quality=85,
                 method=6,
             )
+            img_buffer.seek(0)
+
+            # Upload to GridFS
+            gfs = get_gridfs()
+            if gfs is None:
+                return (
+                    jsonify({"error": "File storage system unavailable"}),
+                    500,
+                )
+
+            # Store file in GridFS with metadata
+            file_id = gfs.upload_from_stream(
+                unique_filename,
+                img_buffer,
+                metadata={
+                    "user": session["user"],
+                    "original_filename": filename,
+                    "uploaded_at": time.time(),
+                },
+            )
 
             # Generate URL for the uploaded file
-            url = url_for(
-                "uploaded_files", filename=unique_filename, _external=True
-            )
+            url = url_for("gridfs_file", file_id=file_id, _external=True)
 
             # Return success response in format expected by markdown editor
             return jsonify({"data": {"filePath": url}})
@@ -497,39 +561,46 @@ def list_images():
         return jsonify({"error": "You must be logged in to view images"}), 403
 
     try:
-        # Get all uploaded files
-        files = os.listdir(app.config["UPLOAD_FOLDER"])
-        # Filter only image files that belong to the current user
-        user_prefix = f"{session['user']}_"
-        image_files = [
-            f for f in files if allowed_file(f) and f.startswith(user_prefix)
-        ]
-        # Sort by modification time (newest first)
-        image_files.sort(
-            key=lambda x: os.path.getmtime(
-                os.path.join(app.config["UPLOAD_FOLDER"], x)
-            ),
-            reverse=True,
+        gfs = get_gridfs()
+        if gfs is None:
+            return jsonify({"error": "File storage system unavailable"}), 500
+
+        # Find all files in GridFS for the current user by querying the files collection directly
+        db = get_db()
+        files_collection = db.db.execute(
+            f"SELECT * FROM \"fs.files\" WHERE json_extract(metadata, '$.user') = '{session['user']}'"
         )
+        files = files_collection.fetchall()
+
+        # Sort by upload time (newest first) - the uploadDate is the 5th column (index 4)
+        files = sorted(files, key=lambda x: x[4], reverse=True)
 
         # Create list of image data
         images = []
-        for filename in image_files:
-            # Display name without user prefix
-            display_name = filename[len(user_prefix) :]
-            file_url = url_for(
-                "uploaded_files", filename=filename, _external=True
-            )
-            file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-            file_size = os.path.getsize(file_path)
-            file_modified = os.path.getmtime(file_path)
+        for file_row in files:
+            file_id = file_row[0]  # _id is the first column
+            filename = file_row[1]  # filename is the second column
+            file_length = file_row[2]  # length is the third column
+            upload_date = file_row[4]  # uploadDate is the fifth column
+
+            file_url = url_for("gridfs_file", file_id=file_id, _external=True)
+
+            # Extract original filename from metadata if available
+            import json
+
+            metadata_str = file_row[6]  # metadata is the seventh column
+            try:
+                metadata = json.loads(metadata_str)
+                display_name = metadata.get("original_filename", filename)
+            except:
+                display_name = filename
 
             images.append(
                 {
                     "name": display_name,
                     "url": file_url,
-                    "size": file_size,
-                    "modified": file_modified,
+                    "size": file_length,
+                    "modified": upload_date,
                 }
             )
 
@@ -573,7 +644,7 @@ def upload_image(current_user):
                 f"{current_user['name']}_{name}_{uuid.uuid4().hex}.webp"
             )
 
-            # Save file as WebP
+            # Save file to GridFS as WebP
             try:
                 # Reset file pointer to beginning
                 file.seek(0)
@@ -589,17 +660,37 @@ def upload_image(current_user):
                     )
                     img = background
 
-                # Save as WebP with good quality
+                # Save as WebP to a BytesIO buffer
+                img_buffer = io.BytesIO()
                 img.save(
-                    os.path.join(app.config["UPLOAD_FOLDER"], unique_filename),
+                    img_buffer,
                     "WEBP",
                     quality=85,
                     method=6,
                 )
+                img_buffer.seek(0)
+
+                # Upload to GridFS
+                gfs = get_gridfs()
+                if gfs is None:
+                    flash("File storage system unavailable")
+                    return redirect(request.url)
+
+                # Store file in GridFS with metadata
+                file_id = gfs.upload_from_stream(
+                    unique_filename,
+                    img_buffer,
+                    metadata={
+                        "user": current_user["name"],
+                        "original_filename": filename,
+                        "uploaded_at": time.time(),
+                    },
+                )
+
                 flash("File uploaded successfully!")
                 # Use a special marker for the URL line so the template can handle it differently
                 flash(
-                    f"URL_LINE:{url_for('uploaded_files', filename=unique_filename, _external=True)}"
+                    f"URL_LINE:{url_for('gridfs_file', file_id=file_id, _external=True)}"
                 )
             except Exception as e:
                 flash(f"Upload failed: {str(e)}")
@@ -612,32 +703,43 @@ def upload_image(current_user):
 
     # GET request - show upload form and list of uploaded files for current user
     try:
-        uploaded_files = os.listdir(app.config["UPLOAD_FOLDER"])
-        # Filter only image files that belong to the current user
-        user_prefix = f"{current_user['name']}_"
-        image_files = [
-            f
-            for f in uploaded_files
-            if allowed_file(f) and f.startswith(user_prefix)
-        ]
-        # Sort by modification time (newest first)
-        image_files.sort(
-            key=lambda x: os.path.getmtime(
-                os.path.join(app.config["UPLOAD_FOLDER"], x)
-            ),
-            reverse=True,
-        )
-        # Limit to last 12 files and create display structure
-        image_files = image_files[:12]
-        # Create list with display names and full names
-        formatted_files = []
-        for filename in image_files:
-            formatted_files.append(
-                {
-                    "full_name": filename,
-                    "display_name": filename[len(user_prefix) :],
-                }
+        gfs = get_gridfs()
+        if gfs is None:
+            formatted_files = []
+        else:
+            # Find all files in GridFS for the current user by querying the files collection directly
+            db = get_db()
+            files_collection = db.db.execute(
+                f"SELECT * FROM \"fs.files\" WHERE json_extract(metadata, '$.user') = '{current_user['name']}'"
             )
+            files = files_collection.fetchall()
+
+            # Sort by upload time (newest first) and limit to last 12 files
+            files = sorted(files, key=lambda x: x[4], reverse=True)[:12]
+
+            # Create display structure
+            formatted_files = []
+            for file_row in files:
+                file_id = file_row[0]  # _id is the first column
+                filename = file_row[1]  # filename is the second column
+
+                # Extract original filename from metadata if available
+                import json
+
+                metadata_str = file_row[6]  # metadata is the seventh column
+                try:
+                    metadata = json.loads(metadata_str)
+                    display_name = metadata.get("original_filename", filename)
+                except:
+                    display_name = filename
+
+                formatted_files.append(
+                    {
+                        "file_id": file_id,
+                        "full_name": filename,
+                        "display_name": display_name,
+                    }
+                )
     except Exception:
         formatted_files = []
 
@@ -657,6 +759,13 @@ def get_all_posts():
     """
     # Get current user with robust session checking
     current_user = get_current_user()
+
+    # Ensure session is updated with current user info
+    if current_user:
+        session["user"] = current_user["name"]
+    elif "user" in session:
+        # If we have a session but no user, clear the session
+        session.pop("user", None)
 
     if CACHE_ENABLED and not current_user:
         # Only cache for non-logged-in users

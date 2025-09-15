@@ -219,6 +219,16 @@ cache_timeout = 300
 
 7. Visit `http://127.0.0.1:5000` in your browser
 
+## Configuration Path
+
+By default, Neo Bloggy looks for a `config.toml` file in the project directory. For Docker deployments or custom installations, you can specify a custom configuration file path using the `NEO_BLOGGY_CONFIG_PATH` environment variable:
+
+```bash
+NEO_BLOGGY_CONFIG_PATH=/data/config.toml python app.py
+```
+
+This allows you to place your configuration file in any location, making it easier to manage configurations in containerized environments.
+
 ## Deployment
 
 This application can be easily deployed to platforms like Heroku without requiring a separate MongoDB database. The NeoSQLite database file will be created automatically when the application runs.

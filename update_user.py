@@ -23,13 +23,21 @@ import argparse
 import sys
 import tomllib
 
-# Load configuration from config.toml
-CONFIG_FILE = "config.toml"
-config = {}
 
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, "rb") as f:
-        config = tomllib.load(f)
+def load_config():
+    """Load configuration from file, with support for custom path via environment variable."""
+    # Check for custom config path in environment variable
+    config_path = os.environ.get("NEO_BLOGGY_CONFIG_PATH", "config.toml")
+
+    config = {}
+    if os.path.exists(config_path):
+        with open(config_path, "rb") as f:
+            config = tomllib.load(f)
+    return config
+
+
+# Load configuration
+config = load_config()
 
 # Database configuration - use the same path as the main app
 DB_PATH = config.get("database", {}).get("db_path", "neo-bloggy.db")

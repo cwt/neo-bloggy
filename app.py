@@ -38,13 +38,21 @@ import uuid
 # Configuration flags
 HTML_FORMATTING = False  # Set to True for formatting, False for minification
 
-# Load configuration from config.toml
-CONFIG_FILE = "config.toml"
-config = {}
 
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, "rb") as f:
-        config = tomllib.load(f)
+def load_config():
+    """Load configuration from file, with support for custom path via environment variable."""
+    # Check for custom config path in environment variable
+    config_path = os.environ.get("NEO_BLOGGY_CONFIG_PATH", "config.toml")
+
+    config = {}
+    if os.path.exists(config_path):
+        with open(config_path, "rb") as f:
+            config = tomllib.load(f)
+    return config
+
+
+# Load configuration
+config = load_config()
 
 # Get configuration values with defaults
 SECRET_KEY = config.get("app", {}).get("secret_key", "fallback-secret-key")

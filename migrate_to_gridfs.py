@@ -6,17 +6,24 @@ Migration script to move all existing files from filesystem to GridFS.
 import os
 import sys
 import time
-from PIL import Image
-import io
-import uuid
-from werkzeug.utils import secure_filename
+import tomllib
 
 # Add the project directory to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Import the app and its configuration
 from app import app, get_db, get_gridfs
-import neosqlite
+
+# Load configuration from config.toml
+CONFIG_FILE = "config.toml"
+config = {}
+
+if os.path.exists(CONFIG_FILE):
+    with open(CONFIG_FILE, "rb") as f:
+        config = tomllib.load(f)
+
+# Database configuration - use the same path as the main app
+DB_PATH = config.get("database", {}).get("db_path", "neo-bloggy.db")
 
 
 def extract_username_from_filename(filename):
@@ -65,7 +72,7 @@ def migrate_files_to_gridfs():
 
     # Initialize database connection
     with app.app_context():
-        db = get_db()
+        get_db()
         gfs = get_gridfs()
 
         if gfs is None:
@@ -114,7 +121,7 @@ def migrate_files_to_gridfs():
                 error_count += 1
                 continue
 
-        print(f"\nMigration completed!")
+        print("\nMigration completed!")
         print(f"  Successfully migrated: {migrated_count}")
         print(f"  Errors: {error_count}")
 

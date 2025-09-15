@@ -1,0 +1,54 @@
+# Neo Bloggy Configuration File
+# This file contains all the configuration options for the Neo Bloggy application.
+
+[app]
+# Secret key for Flask sessions and CSRF protection
+# Generate a strong secret key using: python -c "import secrets; print(secrets.token_urlsafe(32))"
+secret_key = "your-secret-key-here"
+
+# IP address to bind the server to
+ip = "127.0.0.1"
+
+# Port to run the server on
+port = 5000
+
+# Site metadata
+site_title = "Neo Bloggy"
+site_author = "Neo Bloggy"
+site_description = "Modern Blogging Platform"
+
+[database]
+# Path to the NeoSQLite database file
+# Default: neo-bloggy.db in the project directory
+db_path = "neo-bloggy.db"
+
+# Optional: Configure custom FTS5 tokenizer for Asian language support
+# To enable advanced search for Chinese, Japanese, Korean, Thai, etc.
+# 1. Build the FTS5 ICU Tokenizer from: https://github.com/cwt/fts5-icu-tokenizer
+# 2. Uncomment and configure the following lines:
+# For Chinese:
+# tokenizer_name = "icu_cn"
+# tokenizer_path = "/path/to/fts5_icu_cn.so"
+#
+# For Thai:
+# tokenizer_name = "icu_th"
+# tokenizer_path = "/path/to/fts5_icu_th.so"
+#
+# For a universal tokenizer:
+# tokenizer_name = "icu"
+# tokenizer_path = "/path/to/fts5_icu.so"
+#
+# After configuring a tokenizer, you may need to rebuild search indexes
+# from the Admin Panel for existing content to use the new tokenizer.
+
+[caching]
+# Enable or disable caching mechanism
+# Options: true or false
+cache_enabled = false
+
+# Cache timeout in seconds (default: 5 minutes)
+cache_timeout = 300
+
+[file_uploads]
+# Maximum file upload size in bytes (16MB = 16 * 1024 * 1024)
+max_content_length = 16777216

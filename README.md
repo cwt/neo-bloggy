@@ -39,7 +39,7 @@ We've significantly modified this project to work with NeoSQLite, demonstrating 
 - **User Authentication**: Register, login, and logout functionality with security questions for password recovery
 - **Blog Management**: Create, read, update, and delete blog posts with Markdown support
 - **Comment System**: Users can comment on posts with Markdown support
-- **Search Functionality**: Full-text search across posts using NeoSQLite's FTS capabilities
+- **Search Functionality**: Full-text search across posts using NeoSQLite's FTS capabilities, with optional support for Asian languages (Chinese, Japanese, Korean, Thai, etc.) through custom FTS5 tokenizers
 - **File Uploads**: Image upload functionality with automatic WebP conversion for posts
 - **Responsive Design**: Mobile-friendly interface
 - **Admin Panel**: Administrators can manage users and content
@@ -66,7 +66,7 @@ The admin panel provides administrators with tools to manage the platform:
    - Administrators can promote other users to admin status
 
 4. **Search Index Management**:
-   - Administrators can rebuild FTS indexes for optimal search performance
+   - Administrators can rebuild FTS indexes for optimal search performance, including when using custom tokenizers for Asian language support
 
 To access the admin panel, navigate to `/admin` or click "Admin Panel" in the navigation menu (only visible to administrators).
 
@@ -79,10 +79,32 @@ This project demonstrates several key advantages of [NeoSQLite](https://github.c
 3. **Document Storage**: Native support for JSON-like documents
 4. **Query Operators**: Support for MongoDB-style query operators including `$or`, `$contains`, `$text`, etc.
 5. **Performance**: Faster local operations without network latency
-6. **Full-Text Search**: Advanced text search capabilities with customizable tokenizers
+6. **Full-Text Search**: Advanced text search capabilities with support for custom FTS5 tokenizers (enabling Asian language search)
 7. **GridFS Support**: Built-in GridFS-like functionality for file storage
 
-## Modern Features (2025)
+## Asian Language Search Support
+
+This functionality is provided by [NeoSQLite](https://github.com/cwt/neosqlite), which includes support for custom FTS5 tokenizers. To enable Asian language search support in Neo Bloggy:
+
+1. Build the [FTS5 ICU Tokenizer](https://github.com/cwt/fts5-icu-tokenizer) for your target language
+2. Configure the tokenizer in your `config.toml`:
+
+```toml
+[database]
+# Path to the NeoSQLite database file
+# Default: neo-bloggy.db in the project directory
+db_path = "neo-bloggy.db"
+
+# Configure custom FTS5 tokenizer for Asian language support
+tokenizer_name = "icu_th"  # For Thai
+tokenizer_path = "/path/to/fts5_icu_th.so"  # Path to the compiled tokenizer
+```
+
+For detailed instructions on building and configuring the FTS5 ICU Tokenizer, please refer to the [FTS5 ICU Tokenizer README](https://github.com/cwt/fts5-icu-tokenizer).
+
+After configuring the tokenizer, you may need to rebuild the search indexes from the Admin Panel to ensure that the new tokenizer is used for existing content.
+
+## Modern Features
 
 This application includes several modern web development features:
 
@@ -104,24 +126,22 @@ This application includes several modern web development features:
 - Improved code structure and maintainability
 - Enhanced security with input validation and XSS protection
 
-## Performance Optimizations
-
-This application includes several performance optimizations:
-
-### HTML Minification
-The application automatically minifies HTML output by removing empty lines and lines with only whitespace while preserving content indentation. This reduces bandwidth usage while maintaining readable HTML structure.
-
 ### Caching
 Optional caching mechanism to improve performance:
-- **Configurable**: Enable/disable caching and set timeout via environment variables
+- **Configurable**: Enable/disable caching and set timeout via configuration file
 - **Automatic Invalidation**: Cache is automatically cleared when content is modified
 - **Memory Efficient**: Simple LRU-like cache with timeout support
 
-To enable caching, set the following environment variables in your `env.py`:
+To enable caching, modify the following values in your `config.toml`:
 
-```python
-os.environ.setdefault("CACHE_ENABLED", "True")   # Enable caching
-os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 minutes)
+```toml
+[caching]
+# Enable or disable caching mechanism
+# Options: true or false
+cache_enabled = true
+
+# Cache timeout in seconds (default: 5 minutes)
+cache_timeout = 300
 ```
 
 ## Installation
@@ -147,31 +167,50 @@ os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 mi
    pip install -r requirements.txt
    ```
 
-5. Create an `env.py` file with the following content:
-   ```python
-   import os
-
-   os.environ.setdefault("SECRET_KEY", "your-secret-key")
-   os.environ.setdefault("IP", "127.0.0.1")
-   os.environ.setdefault("PORT", "5000")
-   os.environ.setdefault("DB_PATH", "neo-bloggy.db")  # Optional, defaults to neo-bloggy.db
-
+5. Create a `config.toml` file with the following content:
+   ```toml
+   # Neo Bloggy Configuration File
+   # This file contains all the configuration options for the Neo Bloggy application.
+   
+   [app]
+   # Secret key for Flask sessions and CSRF protection
+   # Generate a strong secret key using: python -c "import secrets; print(secrets.token_urlsafe(32))"
+   secret_key = "your-secret-key-here"
+   
+   # IP address to bind the server to
+   ip = "127.0.0.1"
+   
+   # Port to run the server on
+   port = 5000
+   
+   # Site metadata
+   site_title = "Neo Bloggy"
+   site_author = "Neo Bloggy"
+   site_description = "Modern Blogging Platform"
+   
+   [database]
+   # Path to the NeoSQLite database file
+   # Default: neo-bloggy.db in the project directory
+   db_path = "neo-bloggy.db"
+   
    # Optional: Configure custom FTS5 tokenizer (NeoSQLite v0.3.5+)
-   # os.environ.setdefault("TOKENIZER_NAME", "icu")
-   # os.environ.setdefault(
-   #     "TOKENIZER_PATH",
-   #     "/path/to/libfts5_icu.so",
-   # )
-
-   # Optional: Configure caching (default: disabled)
-   # os.environ.setdefault("CACHE_ENABLED", "True")   # Enable caching
-   # os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 minutes)
-
-   # Optional: Configure site-wide meta tags
-   # os.environ.setdefault("SITE_TITLE", "Neo Bloggy")
-   # os.environ.setdefault("SITE_AUTHOR", "Neo Bloggy")
-   # os.environ.setdefault("SITE_DESCRIPTION", "Modern Blogging Platform")
+   # tokenizer_name = "icu"
+   # tokenizer_path = "/path/to/libfts5_icu.so"
+   
+   [caching]
+   # Enable or disable caching mechanism
+   # Options: true or false
+   cache_enabled = false
+   
+   # Cache timeout in seconds (default: 5 minutes)
+   cache_timeout = 300
+   
+   [file_uploads]
+   # Maximum file upload size in bytes (16MB = 16 * 1024 * 1024)
+   max_content_length = 16777216
    ```
+   
+   Modify the values as needed for your environment.
 
 6. Run the application:
    ```

@@ -1,4 +1,5 @@
 import os
+import tomllib
 from flask import (
     Flask,
     flash,
@@ -9,8 +10,6 @@ from flask import (
     url_for,
     g,
     jsonify,
-    send_from_directory,
-    after_this_request,
     make_response,
 )
 from flask_bootstrap import Bootstrap5
@@ -23,23 +22,32 @@ import markdown
 import bleach
 from bleach.css_sanitizer import CSSSanitizer
 import re
-from functools import lru_cache, wraps
+from functools import wraps
 import time
-import requests
 from PIL import Image
 import io
 
 # Configuration flags
 HTML_FORMATTING = False  # Set to True for formatting, False for minification
-CACHE_ENABLED = os.environ.get("CACHE_ENABLED", "False").lower() == "true"
-CACHE_TIMEOUT = int(os.environ.get("CACHE_TIMEOUT", "300"))  # Default 5 minutes
 
-if os.path.exists("env.py"):
-    import env
+# Load configuration from config.toml
+CONFIG_FILE = "config.toml"
+config = {}
+
+if os.path.exists(CONFIG_FILE):
+    with open(CONFIG_FILE, "rb") as f:
+        config = tomllib.load(f)
+
+# Get configuration values with defaults
+SECRET_KEY = config.get("app", {}).get("secret_key", "fallback-secret-key")
+CACHE_ENABLED = config.get("caching", {}).get("cache_enabled", False)
+CACHE_TIMEOUT = config.get("caching", {}).get(
+    "cache_timeout", 300
+)  # Default 5 minutes
 
 app = Flask(__name__)
 
-app.secret_key = os.environ.get("SECRET_KEY")
+app.secret_key = SECRET_KEY
 # Configure session handling for better persistence
 app.config["SESSION_COOKIE_SECURE"] = (
     False  # Set to True in production with HTTPS
@@ -63,7 +71,9 @@ from forms import (
 # Configure file upload settings
 # Note: We're now using GridFS for file storage, so UPLOAD_FOLDER is only used for temporary operations
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads")
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max file size
+app.config["MAX_CONTENT_LENGTH"] = config.get("file_uploads", {}).get(
+    "max_content_length", 16 * 1024 * 1024
+)  # 16MB max file size
 
 # Create upload directory if it doesn't exist (might be needed for temporary operations)
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
@@ -72,9 +82,9 @@ os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 # Database configuration
-DB_PATH = os.environ.get("DB_PATH", "/tmp/neosqlite.db")
-TOKENIZER_NAME = os.environ.get("TOKENIZER_NAME", None)
-TOKENIZER_PATH = os.environ.get("TOKENIZER_PATH", None)
+DB_PATH = config.get("database", {}).get("db_path", "neo-bloggy.db")
+TOKENIZER_NAME = config.get("database", {}).get("tokenizer_name", None)
+TOKENIZER_PATH = config.get("database", {}).get("tokenizer_path", None)
 
 
 def allowed_file(filename):
@@ -331,7 +341,7 @@ def get_db():
 def get_gridfs():
     """Get GridFS instance for the current request."""
     if "gfs" not in g:
-        db = get_db()  # This will initialize both db and gfs
+        get_db()  # This will initialize both db and gfs
         if "gfs" not in g:
             # If gfs wasn't initialized in get_db, try to initialize it now
             try:
@@ -421,10 +431,10 @@ def inject_site_details():
         session["user"] = user["name"]
 
     return {
-        "site_title": os.environ.get("SITE_TITLE", "Medium Bloggy"),
-        "site_author": os.environ.get("SITE_AUTHOR", "Medium Bloggy"),
-        "site_description": os.environ.get(
-            "SITE_DESCRIPTION", "Blogging Ireland; journalism"
+        "site_title": config.get("app", {}).get("site_title", "Neo Bloggy"),
+        "site_author": config.get("app", {}).get("site_author", "Neo Bloggy"),
+        "site_description": config.get("app", {}).get(
+            "site_description", "Blogging Ireland; journalism"
         ),
         "user": user,
     }
@@ -1389,7 +1399,7 @@ def search():
             # Sort by search relevance (highest score first)
             posts.sort(key=lambda x: x.get("search_score", 0), reverse=True)
 
-        except Exception as e:
+        except Exception:
             # If FTS query fails due to special characters, fall back to regex search
             # This is a more basic search but will handle special characters
             import re
@@ -1448,7 +1458,6 @@ def is_suspicious_input(text):
 
     Returns True if suspicious content is detected.
     """
-    import re
 
     # Check for URLs (more precise patterns)
     url_patterns = [
@@ -1686,7 +1695,7 @@ def page_not_found_500(e):
 
 if __name__ == "__main__":
     app.run(
-        host=os.environ.get("IP", "127.0.0.1"),
-        port=int(os.environ.get("PORT", 5000)),
+        host=config.get("app", {}).get("ip", "127.0.0.1"),
+        port=int(config.get("app", {}).get("port", 5000)),
         debug=True,
     )

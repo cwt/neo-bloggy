@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-User Management Script for Medium Bloggy
+User Management Script for Neo Bloggy
 
 This script allows administrators to manage users from the command line:
 - Enable/disable users
@@ -21,13 +21,18 @@ import neosqlite
 import os
 import argparse
 import sys
+import tomllib
 
-# Load environment configuration if it exists
-if os.path.exists("env.py"):
-    import env
+# Load configuration from config.toml
+CONFIG_FILE = "config.toml"
+config = {}
+
+if os.path.exists(CONFIG_FILE):
+    with open(CONFIG_FILE, "rb") as f:
+        config = tomllib.load(f)
 
 # Database configuration - use the same path as the main app
-DB_PATH = os.environ.get("DB_PATH", "medium-bloggy.db")
+DB_PATH = config.get("database", {}).get("db_path", "neo-bloggy.db")
 
 
 def get_all_users():
@@ -146,7 +151,7 @@ def show_user_details(email):
 def main():
     """Main function to handle command line arguments."""
     parser = argparse.ArgumentParser(
-        description="Manage Medium Bloggy users",
+        description="Manage Neo Bloggy users",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )

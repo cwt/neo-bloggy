@@ -1691,6 +1691,13 @@ def sitemap():
     )
 
 
+# ----- ROBOTS.TXT ----- #
+@app.route("/robots.txt")
+def robots_txt():
+    """Serve the robots.txt file."""
+    return app.send_static_file("robots.txt")
+
+
 # ----- HANDLE 404 ERROR ----- #
 @app.errorhandler(404)
 def page_not_found_404(e):

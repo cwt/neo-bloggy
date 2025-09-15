@@ -1,21 +1,22 @@
-# Medium Bloggy - NeoSQLite Edition
+# Neo Bloggy
 
-![Medium Bloggy Responsive](static/img/am-i-responsive.PNG)
+![Neo Bloggy Responsive](static/img/am-i-responsive.PNG)
 
 ## Overview
 
-Medium Bloggy is a blogging platform for amateur writers to showcase their work. This version has been modified to use **[NeoSQLite](https://github.com/cwt/neosqlite)** instead of MongoDB, demonstrating that NeoSQLite can effectively replace PyMongo and MongoDB in a Flask application.
+Neo Bloggy is a modern blogging platform for amateur writers to showcase their work. This standalone project was originally forked from [Medium Bloggy](https://github.com/leithdm/medium-bloggy) but has been completely rebranded and modernized with significant enhancements.
 
-This project showcases how NeoSQLite, a document-oriented database with a MongoDB-like API, can be used as a drop-in replacement for MongoDB in Python web applications, providing a lightweight alternative without requiring external database servers.
+The project has been fundamentally transformed to use **[NeoSQLite](https://github.com/cwt/neosqlite)** as the database backend, replacing MongoDB/PyMongo entirely. This demonstrates that NeoSQLite can effectively replace MongoDB in a Flask application while providing a lightweight alternative without requiring external database servers.
 
-## Key Changes
+## Key Changes from Original Project
 
-We've modified this project to work with NeoSQLite, demonstrating that NeoSQLite can literally replace PyMongo and MongoDB while maintaining all existing functionality:
+We've significantly modified this project to work with NeoSQLite, demonstrating that NeoSQLite can literally replace PyMongo and MongoDB while maintaining all existing functionality:
 
-1. **Database Migration**: Replaced MongoDB/PyMongo with NeoSQLite for all database operations
-2. **API Compatibility**: Leveraged NeoSQLite's MongoDB-like API to minimize code changes
-3. **Performance**: Improved performance by eliminating external database dependencies
-4. **Deployment**: Simplified deployment by removing MongoDB Atlas requirements
+1. **Complete Database Migration**: Replaced MongoDB/PyMongo with NeoSQLite for all database operations
+2. **Modern API Compatibility**: Leveraged NeoSQLite's MongoDB-like API to minimize code changes
+3. **Enhanced Performance**: Improved performance by eliminating external database dependencies
+4. **Simplified Deployment**: Removed MongoDB Atlas requirements for a truly standalone experience
+5. **Modern Features**: Updated to Bootstrap 5.3, Flask 3.1, and modern Python practices
 
 ## Technologies Used
 
@@ -29,20 +30,21 @@ We've modified this project to work with NeoSQLite, demonstrating that NeoSQLite
 ### Back-End Technologies
 - Python 3.x
 - Flask 3.1
-- NeoSQLite 0.3.6 or newer
-- Flask-Bootstrap5 5.3.3
+- NeoSQLite 0.4.0 or newer
+- Flask-Bootstrap5 2.5.0
 - Flask-WTF 1.2.2
 
 ## Features
 
-- **User Authentication**: Register, login, and logout functionality
-- **Blog Management**: Create, read, update, and delete blog posts
-- **Comment System**: Users can comment on posts
-- **Search Functionality**: Search posts by title or subtitle using NeoSQLite's `$or` and `$contains` operators
-- **Rich Text Editing**: Markdown support for blog posts
-- **File Uploads**: Image upload functionality for posts
+- **User Authentication**: Register, login, and logout functionality with security questions for password recovery
+- **Blog Management**: Create, read, update, and delete blog posts with Markdown support
+- **Comment System**: Users can comment on posts with Markdown support
+- **Search Functionality**: Full-text search across posts using NeoSQLite's FTS capabilities
+- **File Uploads**: Image upload functionality with automatic WebP conversion for posts
 - **Responsive Design**: Mobile-friendly interface
 - **Admin Panel**: Administrators can manage users and content
+- **Security Features**: XSS protection, input validation, and secure password handling
+- **Caching**: Optional caching mechanism for improved performance
 
 ## Admin Panel Features
 
@@ -63,6 +65,9 @@ The admin panel provides administrators with tools to manage the platform:
    - The first user to register is automatically made an administrator
    - Administrators can promote other users to admin status
 
+4. **Search Index Management**:
+   - Administrators can rebuild FTS indexes for optimal search performance
+
 To access the admin panel, navigate to `/admin` or click "Admin Panel" in the navigation menu (only visible to administrators).
 
 ## NeoSQLite Advantages Demonstrated
@@ -72,10 +77,10 @@ This project demonstrates several key advantages of [NeoSQLite](https://github.c
 1. **MongoDB-like API**: Familiar syntax for developers transitioning from MongoDB
 2. **Zero Configuration**: No external database servers required
 3. **Document Storage**: Native support for JSON-like documents
-4. **Query Operators**: Support for MongoDB-style query operators including `$or`, `$contains`, etc.
+4. **Query Operators**: Support for MongoDB-style query operators including `$or`, `$contains`, `$text`, etc.
 5. **Performance**: Faster local operations without network latency
 6. **Full-Text Search**: Advanced text search capabilities with customizable tokenizers
-
+7. **GridFS Support**: Built-in GridFS-like functionality for file storage
 
 ## Modern Features (2025)
 
@@ -91,11 +96,13 @@ This application includes several modern web development features:
 - HTML minification to reduce bandwidth usage
 - Optional caching mechanism for improved response times
 - Modern dependency versions for better security and performance
+- WebP image conversion for optimized file sizes
 
 ### Code Modernization
 - Updated to Flask 3.1 with modern Python practices
 - Removed deprecated libraries and methods
 - Improved code structure and maintainability
+- Enhanced security with input validation and XSS protection
 
 ## Performance Optimizations
 
@@ -121,12 +128,12 @@ os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 mi
 
 1. Clone this repository:
    ```
-   git clone https://github.com/your-username/medium-bloggy.git
+   git clone https://github.com/cwt/neo-bloggy.git
    ```
 
 2. Navigate to the project directory:
    ```
-   cd medium-bloggy
+   cd neo-bloggy
    ```
 
 3. Create a virtual environment:
@@ -147,7 +154,7 @@ os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 mi
    os.environ.setdefault("SECRET_KEY", "your-secret-key")
    os.environ.setdefault("IP", "127.0.0.1")
    os.environ.setdefault("PORT", "5000")
-   os.environ.setdefault("DB_PATH", "medium-bloggy.db")  # Optional, defaults to medium-bloggy.db
+   os.environ.setdefault("DB_PATH", "neo-bloggy.db")  # Optional, defaults to neo-bloggy.db
 
    # Optional: Configure custom FTS5 tokenizer (NeoSQLite v0.3.5+)
    # os.environ.setdefault("TOKENIZER_NAME", "icu")
@@ -161,9 +168,9 @@ os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 mi
    # os.environ.setdefault("CACHE_TIMEOUT", "300")   # Cache timeout in seconds (5 minutes)
 
    # Optional: Configure site-wide meta tags
-   # os.environ.setdefault("SITE_TITLE", "Medium Bloggy")
-   # os.environ.setdefault("SITE_AUTHOR", "Medium Bloggy")
-   # os.environ.setdefault("SITE_DESCRIPTION", "Blogging Ireland; journalism")
+   # os.environ.setdefault("SITE_TITLE", "Neo Bloggy")
+   # os.environ.setdefault("SITE_AUTHOR", "Neo Bloggy")
+   # os.environ.setdefault("SITE_DESCRIPTION", "Modern Blogging Platform")
    ```
 
 6. Run the application:
@@ -179,4 +186,6 @@ This application can be easily deployed to platforms like Heroku without requiri
 
 ## Original Project
 
-For information about the original project that used MongoDB, please see [ORIGINAL_README.md](ORIGINAL_README.md).
+This project was originally forked from [Medium Bloggy](https://github.com/leithdm/medium-bloggy), a project by [leithdm](https://github.com/leithdm). For information about the original project that used MongoDB, please see [ORIGINAL_README.md](ORIGINAL_README.md).
+
+The original project was transformed into Neo Bloggy as a standalone project with the ultimate objective to modernize in everything possible while using NeoSQLite as the only database backend.

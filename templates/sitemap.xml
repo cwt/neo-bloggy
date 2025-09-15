@@ -1,27 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <!-- Homepage -->
     <url>
         <loc>{{ url_for('get_all_posts', _external=True) }}</loc>
-        <lastmod>{{ current_date }}</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
+
+    <!-- Authentication pages -->
     <url>
         <loc>{{ url_for('login', _external=True) }}</loc>
-        <lastmod>{{ current_date }}</lastmod>
-        <changefreq>monthly</changefreq>
+        <changefreq>yearly</changefreq>
         <priority>0.5</priority>
     </url>
     <url>
         <loc>{{ url_for('register', _external=True) }}</loc>
-        <lastmod>{{ current_date }}</lastmod>
-        <changefreq>monthly</changefreq>
+        <changefreq>yearly</changefreq>
         <priority>0.5</priority>
     </url>
+
+    <!-- Blog posts -->
     {% for post in posts %}
     <url>
         <loc>{{ url_for('show_post', post_id=post._id, _external=True) }}</loc>
-        <lastmod>{{ post.date }}</lastmod>
+        <lastmod>{{ post.lastmod }}</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>

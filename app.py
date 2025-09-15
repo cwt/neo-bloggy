@@ -1,31 +1,39 @@
-import os
-import tomllib
+from PIL import Image
+from bleach.css_sanitizer import CSSSanitizer
+from datetime import date
 from flask import (
     Flask,
     flash,
-    render_template,
-    redirect,
-    request,
-    session,
-    url_for,
     g,
     jsonify,
     make_response,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
 )
 from flask_bootstrap import Bootstrap5
-from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
-from datetime import date
-import neosqlite
-import uuid
-import markdown
-import bleach
-from bleach.css_sanitizer import CSSSanitizer
-import re
+from forms import (
+    CommentForm,
+    CreatePostForm,
+    EditProfileForm,
+    LoginForm,
+    PasswordRecoveryForm,
+    RegisterForm,
+)
 from functools import wraps
-import time
-from PIL import Image
+from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
+import bleach
 import io
+import markdown
+import neosqlite
+import os
+import re
+import time
+import tomllib
+import uuid
 
 # Configuration flags
 HTML_FORMATTING = False  # Set to True for formatting, False for minification
@@ -58,15 +66,6 @@ app.config["PERMANENT_SESSION_LIFETIME"] = 86400  # 24 hours
 app.config["SESSION_REFRESH_EACH_REQUEST"] = True
 
 bootstrap = Bootstrap5(app)
-
-from forms import (
-    RegisterForm,
-    LoginForm,
-    CreatePostForm,
-    CommentForm,
-    EditProfileForm,
-    PasswordRecoveryForm,
-)
 
 # Configure file upload settings
 # Note: We're now using GridFS for file storage, so UPLOAD_FOLDER is only used for temporary operations
@@ -141,28 +140,28 @@ def markdown_to_html(markdown_text):
 
     # Sanitize HTML to prevent XSS
     allowed_tags = [
-        "p",
+        "a",
+        "blockquote",
         "br",
-        "strong",
+        "code",
+        "div",
         "em",
-        "u",
         "h1",
         "h2",
         "h3",
         "h4",
         "h5",
         "h6",
-        "blockquote",
-        "code",
-        "pre",
-        "ul",
-        "ol",
-        "li",
-        "a",
-        "img",
         "hr",
-        "div",
+        "img",
+        "li",
+        "ol",
+        "p",
+        "pre",
         "span",
+        "strong",
+        "u",
+        "ul",
     ]
     allowed_attributes = {
         "a": ["href", "title"],
@@ -641,7 +640,7 @@ def list_images():
             try:
                 metadata = json.loads(metadata_str)
                 display_name = metadata.get("original_filename", filename)
-            except:
+            except Exception:
                 display_name = filename
 
             images.append(
@@ -779,7 +778,7 @@ def upload_image(current_user):
                 try:
                     metadata = json.loads(metadata_str)
                     display_name = metadata.get("original_filename", filename)
-                except:
+                except Exception:
                     display_name = filename
 
                 formatted_files.append(
@@ -1667,6 +1666,23 @@ def sitemap():
     from datetime import datetime
 
     current_date = datetime.utcnow().strftime("%Y-%m-%d")
+
+    # Process posts to ensure proper date formatting
+    for post in posts:
+        # If post has a date field, try to convert it to proper format
+        if "date" in post:
+            # The existing date format is "Month Day, Year" (e.g., "September 15, 2025")
+            # We need to convert it to "YYYY-MM-DD" format
+            try:
+                # Parse the existing date format
+                date_obj = datetime.strptime(post["date"], "%B %d, %Y")
+                # Format it as YYYY-MM-DD
+                post["lastmod"] = date_obj.strftime("%Y-%m-%d")
+            except ValueError:
+                # If parsing fails, use current date as fallback
+                post["lastmod"] = current_date
+        else:
+            post["lastmod"] = current_date
 
     return (
         render_template("sitemap.xml", posts=posts, current_date=current_date),

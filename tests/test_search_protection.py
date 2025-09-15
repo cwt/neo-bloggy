@@ -1,12 +1,11 @@
-import unittest
-import sys
+from app import is_suspicious_input
 import os
+import sys
+import unittest
 
 # Add the project directory to the Python path
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_dir)
-
-from app import is_suspicious_input
 
 
 class TestSearchProtection(unittest.TestCase):

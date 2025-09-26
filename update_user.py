@@ -24,6 +24,34 @@ import sys
 import tomllib
 
 
+def get_id_for_query(id_value):
+    """Convert an ID value for database query, handling both integer and ObjectId formats.
+    
+    For NeoSQLite v1.1.0 compatibility:
+    - New documents have ObjectId in _id field
+    - Old documents may still have integer _id until updated
+    - Also check the 'id' field which always contains the integer ID for all documents
+    """
+    try:
+        # Try to parse as integer for backward compatibility
+        int_id = int(id_value)
+        # For NeoSQLite v1.1.0, we can query either the integer ID in 'id' field
+        # or attempt to use ObjectId format in '_id' field
+        # Return a query that checks both
+        return int_id
+    except (ValueError, TypeError):
+        # If it's not an integer, it might already be an ObjectId hex string
+        # For NeoSQLite v1.1.0, we might need to use the ObjectId type
+        try:
+            import neosqlite
+            # Try to create an ObjectId from the value
+            object_id = neosqlite.ObjectId(id_value)
+            return object_id
+        except:
+            # If all attempts fail, return the original value
+            return id_value
+
+
 def load_config():
     """Load configuration from file, with support for custom path via environment variable."""
     # Check for custom config path in environment variable

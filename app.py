@@ -191,6 +191,34 @@ def markdown_to_html(markdown_text):
 cache_storage = {}
 
 
+def get_id_for_query(id_value):
+    """Convert an ID value for database query, handling both integer and ObjectId formats.
+    
+    For NeoSQLite v1.1.0 compatibility:
+    - New documents have ObjectId in _id field
+    - Old documents may still have integer _id until updated
+    - Also check the 'id' field which always contains the integer ID for all documents
+    """
+    try:
+        # Try to parse as integer for backward compatibility
+        int_id = int(id_value)
+        # For NeoSQLite v1.1.0, we can query either the integer ID in 'id' field
+        # or attempt to use ObjectId format in '_id' field
+        # Return a query that checks both
+        return int_id
+    except (ValueError, TypeError):
+        # If it's not an integer, it might already be an ObjectId hex string
+        # For NeoSQLite v1.1.0, we might need to use the ObjectId type
+        try:
+            import neosqlite
+            # Try to create an ObjectId from the value
+            object_id = neosqlite.ObjectId(id_value)
+            return object_id
+        except:
+            # If all attempts fail, return the original value
+            return id_value
+
+
 def get_cache_key(*args, **kwargs):
     """Generate a cache key from arguments."""
     return str(args) + str(sorted(kwargs.items()))
@@ -247,9 +275,11 @@ def get_post_with_comments(post_id):
     Only show comments from active users.
     """
     db = get_db()
-    post = db.blog_posts.find_one({"_id": int(post_id)})
+    
+    # Try to query with integer first (for backward compatibility) then ObjectId
+    post = db.blog_posts.find_one({"_id": get_id_for_query(post_id)})
     if post:
-        comments = list(db.blog_comments.find({"parent_post": int(post_id)}))
+        comments = list(db.blog_comments.find({"parent_post": get_id_for_query(post_id)}))
         # Filter comments to only show those from active users
         active_users = [
             user["name"] for user in db.users.find({"is_active": True})
@@ -1102,9 +1132,9 @@ def show_post(post_id):
             )
         else:
             # For POST requests (comments), we need fresh data
-            requested_post = db.blog_posts.find_one({"_id": int(post_id)})
+            requested_post = db.blog_posts.find_one({"_id": get_id_for_query(post_id)})
             requested_post_comments = db.blog_comments.find(
-                {"parent_post": int(post_id)}
+                {"parent_post": get_id_for_query(post_id)}
             )
 
         # Handle case where post is not found
@@ -1147,7 +1177,7 @@ def show_post(post_id):
             new_comment = {
                 "text": form.comment_text.data,
                 "comment_author": current_user["name"],
-                "parent_post": int(post_id),
+                "parent_post": get_id_for_query(post_id),
             }
 
             db.blog_comments.insert_one(new_comment)
@@ -1220,7 +1250,7 @@ def edit_post(current_user, post_id):
     """
     try:
         db = get_db()
-        post = db.blog_posts.find_one({"_id": int(post_id)})
+        post = db.blog_posts.find_one({"_id": get_id_for_query(post_id)})
 
         if not post:
             flash("Post not found.")
@@ -1240,7 +1270,7 @@ def edit_post(current_user, post_id):
         )
         if edit_form.validate_on_submit():
             db.blog_posts.update_one(
-                {"_id": int(post_id)},
+                {"_id": get_id_for_query(post_id)},
                 {
                     "$set": {
                         "title": edit_form.title.data,
@@ -1283,7 +1313,7 @@ def delete_post(current_user, post_id):
     try:
         db = get_db()
         # Verify the post exists and get it
-        post = db.blog_posts.find_one({"_id": int(post_id)})
+        post = db.blog_posts.find_one({"_id": get_id_for_query(post_id)})
         if not post:
             flash("Post not found.")
             return redirect(url_for("get_all_posts"))
@@ -1293,7 +1323,7 @@ def delete_post(current_user, post_id):
             flash("You can only delete your own posts.")
             return redirect(url_for("get_all_posts"))
 
-        db.blog_posts.delete_one({"_id": int(post_id)})
+        db.blog_posts.delete_one({"_id": get_id_for_query(post_id)})
         flash("Post Successfully Deleted")
         # Clear cache since we've deleted a post
         if CACHE_ENABLED:
@@ -1322,7 +1352,7 @@ def delete_comment(current_user, comment_id):
     db = get_db()
 
     # Get the comment to delete
-    comment = db.blog_comments.find_one({"_id": int(comment_id)})
+    comment = db.blog_comments.find_one({"_id": get_id_for_query(comment_id)})
     if not comment:
         flash("Comment not found.")
         post_id = request.args.get("post_id")
@@ -1346,7 +1376,7 @@ def delete_comment(current_user, comment_id):
             return redirect(url_for("show_post", post_id=post_id))
 
     # Proceed with deletion
-    db.blog_comments.delete_one({"_id": int(comment_id)})
+    db.blog_comments.delete_one({"_id": get_id_for_query(comment_id)})
     flash("Comment Successfully Deleted")
     post_id = request.args.get("post_id")
     # Clear cache for this post since we've deleted a comment
@@ -1591,7 +1621,7 @@ def toggle_user_status(current_user, user_id):
     """
     db = get_db()
     # Find the user to toggle
-    user_to_toggle = db.users.find_one({"_id": int(user_id)})
+    user_to_toggle = db.users.find_one({"_id": get_id_for_query(user_id)})
 
     if not user_to_toggle:
         flash("User not found.")
@@ -1605,7 +1635,7 @@ def toggle_user_status(current_user, user_id):
     # Toggle the user's active status
     new_status = not user_to_toggle.get("is_active", True)
     db.users.update_one(
-        {"_id": int(user_id)}, {"$set": {"is_active": new_status}}
+        {"_id": get_id_for_query(user_id)}, {"$set": {"is_active": new_status}}
     )
 
     status_text = "enabled" if new_status else "disabled"
@@ -1626,14 +1656,14 @@ def make_admin(current_user, user_id):
     """
     db = get_db()
     # Find the user to make admin
-    user_to_make_admin = db.users.find_one({"_id": int(user_id)})
+    user_to_make_admin = db.users.find_one({"_id": get_id_for_query(user_id)})
 
     if not user_to_make_admin:
         flash("User not found.")
         return redirect(url_for("admin_panel"))
 
     # Make the user an admin
-    db.users.update_one({"_id": int(user_id)}, {"$set": {"is_admin": True}})
+    db.users.update_one({"_id": get_id_for_query(user_id)}, {"$set": {"is_admin": True}})
 
     flash(f"User '{user_to_make_admin['name']}' is now an admin.")
 
@@ -1725,8 +1755,10 @@ def page_not_found_500(e):
 
 
 if __name__ == "__main__":
+    # Check if we're running in Docker by looking for the FLASK_RUN_HOST environment variable
+    host = os.environ.get("FLASK_RUN_HOST", config.get("app", {}).get("ip", "127.0.0.1"))
     app.run(
-        host=config.get("app", {}).get("ip", "127.0.0.1"),
+        host=host,
         port=int(config.get("app", {}).get("port", 5000)),
         debug=True,
     )

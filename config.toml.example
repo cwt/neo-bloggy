@@ -28,15 +28,15 @@ db_path = "neo-bloggy.db"
 # 2. Uncomment and configure the following lines:
 # For Chinese:
 # tokenizer_name = "icu_cn"
-# tokenizer_path = "/path/to/fts5_icu_cn.so"
+# tokenizer_path = "/path/to/libfts5_icu_cn.so"
 #
 # For Thai:
 # tokenizer_name = "icu_th"
-# tokenizer_path = "/path/to/fts5_icu_th.so"
+# tokenizer_path = "/path/to/libfts5_icu_th.so"
 #
 # For a universal tokenizer:
 # tokenizer_name = "icu"
-# tokenizer_path = "/path/to/fts5_icu.so"
+# tokenizer_path = "/path/to/libfts5_icu.so"
 #
 # After configuring a tokenizer, you may need to rebuild search indexes
 # from the Admin Panel for existing content to use the new tokenizer.

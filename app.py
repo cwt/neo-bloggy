@@ -193,7 +193,7 @@ cache_storage = {}
 
 def get_id_for_query(id_value):
     """Convert an ID value for database query, handling both integer and ObjectId formats.
-    
+
     For NeoSQLite v1.1.0 compatibility:
     - New documents have ObjectId in _id field
     - Old documents may still have integer _id until updated
@@ -202,19 +202,19 @@ def get_id_for_query(id_value):
     try:
         # Try to parse as integer for backward compatibility
         int_id = int(id_value)
-        # For NeoSQLite v1.1.0, we can query either the integer ID in 'id' field
-        # or attempt to use ObjectId format in '_id' field
-        # Return a query that checks both
+        # Return integer for integer IDs
         return int_id
     except (ValueError, TypeError):
         # If it's not an integer, it might already be an ObjectId hex string
-        # For NeoSQLite v1.1.0, we might need to use the ObjectId type
+        # For NeoSQLite v1.1.0, we need to return the hex string representation for parameter binding
         try:
             import neosqlite
-            # Try to create an ObjectId from the value
-            object_id = neosqlite.ObjectId(id_value)
-            return object_id
-        except:
+
+            # Try to create an ObjectId from the value to validate it
+            object_id = neosqlite.objectid.ObjectId(id_value)
+            # Return the string representation which should work with NeoSQLite parameter binding
+            return str(object_id)
+        except Exception:
             # If all attempts fail, return the original value
             return id_value
 
@@ -222,6 +222,18 @@ def get_id_for_query(id_value):
 def get_cache_key(*args, **kwargs):
     """Generate a cache key from arguments."""
     return str(args) + str(sorted(kwargs.items()))
+
+
+def get_active_users(db):
+    """Get list of active users from the database."""
+    return [user["name"] for user in db.users.find({"is_active": True})]
+
+
+def filter_active_user_content(
+    content_list, active_users, author_field="comment_author"
+):
+    """Filter content to only include items from active users."""
+    return [item for item in content_list if item[author_field] in active_users]
 
 
 def cached_result(func):
@@ -275,20 +287,18 @@ def get_post_with_comments(post_id):
     Only show comments from active users.
     """
     db = get_db()
-    
+
     # Try to query with integer first (for backward compatibility) then ObjectId
     post = db.blog_posts.find_one({"_id": get_id_for_query(post_id)})
     if post:
-        comments = list(db.blog_comments.find({"parent_post": get_id_for_query(post_id)}))
+        comments = list(
+            db.blog_comments.find({"parent_post": get_id_for_query(post_id)})
+        )
         # Filter comments to only show those from active users
-        active_users = [
-            user["name"] for user in db.users.find({"is_active": True})
-        ]
-        comments = [
-            comment
-            for comment in comments
-            if comment["comment_author"] in active_users
-        ]
+        active_users = get_active_users(db)
+        comments = filter_active_user_content(
+            comments, active_users, "comment_author"
+        )
         return post, comments
     return None, []
 
@@ -482,7 +492,7 @@ def inject_site_details():
 # ---------------- #
 
 
-@app.route("/gridfs/<int:file_id>")
+@app.route("/gridfs/<file_id>")
 def gridfs_file(file_id):
     """Serve files from GridFS with proper caching headers."""
     try:
@@ -490,8 +500,35 @@ def gridfs_file(file_id):
         if gfs is None:
             return "File storage system unavailable", 500
 
+        # Convert file_id to appropriate format for GridFS operations
+        # Use the same logic as get_id_for_query for consistency
+        gridfs_id = get_id_for_query(file_id)
+
+        # For GridFS operations, we might still need an ObjectId object in some cases
+        # So let's ensure it's properly converted
+        if isinstance(gridfs_id, str):
+            try:
+                import neosqlite
+
+                # If it's a 24-character hex string, create an ObjectId
+                if len(gridfs_id) == 24 and all(
+                    c in "0123456789abcdefABCDEF" for c in gridfs_id
+                ):
+                    gridfs_id = neosqlite.objectid.ObjectId(gridfs_id)
+                else:
+                    # If it's not a hex string, try to convert to int
+                    gridfs_id = int(gridfs_id)
+            except ValueError:
+                return "Invalid file ID format", 400
+        elif isinstance(gridfs_id, int):
+            # If it's already an integer, that's fine for GridFS operations
+            pass
+        else:
+            # If it's already an ObjectId (or other unexpected type), use as-is
+            pass
+
         # Open download stream from GridFS
-        grid_out = gfs.open_download_stream(file_id)
+        grid_out = gfs.open_download_stream(gridfs_id)
 
         # Get file metadata
         filename = grid_out.filename
@@ -502,7 +539,7 @@ def gridfs_file(file_id):
         # Generate ETag based on file ID and upload date
         import hashlib
 
-        etag_base = f"{file_id}_{upload_date if upload_date else file_id}"
+        etag_base = f"{gridfs_id}_{upload_date if upload_date else gridfs_id}"
         etag = hashlib.md5(etag_base.encode()).hexdigest()
 
         # Check if client has cached version
@@ -664,17 +701,20 @@ def list_images():
         # Create list of image data
         images = []
         for file_row in files:
-            file_id = file_row[0]  # _id is the first column
-            filename = file_row[1]  # filename is the second column
-            file_length = file_row[2]  # length is the third column
-            upload_date = file_row[4]  # uploadDate is the fifth column
+            # From database inspection, column 1 contains the actual GridFS file ID, not column 0 (which is an internal integer)
+            file_id = file_row[
+                1
+            ]  # This should be the actual GridFS file ID (from our test, column 1 has the GridFS ID)
+            filename = file_row[2]  # filename is now the third column
+            file_length = file_row[3]  # length is the fourth column
+            upload_date = file_row[5]  # uploadDate is now the sixth column
 
             file_url = url_for("gridfs_file", file_id=file_id, _external=True)
 
             # Extract original filename from metadata if available
             import json
 
-            metadata_str = file_row[6]  # metadata is the seventh column
+            metadata_str = file_row[7]  # metadata is now the eighth column
             try:
                 metadata = json.loads(metadata_str)
                 display_name = metadata.get("original_filename", filename)
@@ -801,13 +841,17 @@ def upload_image(current_user):
             files = files_collection.fetchall()
 
             # Sort by upload time (newest first) and limit to last 12 files
-            files = sorted(files, key=lambda x: x[4], reverse=True)[:12]
+            files = sorted(files, key=lambda x: x[5], reverse=True)[
+                :12
+            ]  # x[5] is the 'uploadDate' column
 
             # Create display structure
             formatted_files = []
             for file_row in files:
-                file_id = file_row[0]  # _id is the first column
-                filename = file_row[1]  # filename is the second column
+                file_id = file_row[
+                    1
+                ]  # This gets the actual GridFS file ID from column 1
+                filename = file_row[2]  # filename is now the third column
 
                 # Extract original filename from metadata if available
                 import json
@@ -873,9 +917,7 @@ def get_all_posts():
         # Generate new result and cache it
         db = get_db()
         # Only show posts from active users
-        active_users = [
-            user["name"] for user in db.users.find({"is_active": True})
-        ]
+        active_users = get_active_users(db)
         posts = list(db.blog_posts.find({"author": {"$in": active_users}}))
         result = render_template("index.html", all_posts=posts)
         cache_storage[cache_key] = (result, current_time)
@@ -888,9 +930,7 @@ def get_all_posts():
     else:
         db = get_db()
         # Only show posts from active users
-        active_users = [
-            user["name"] for user in db.users.find({"is_active": True})
-        ]
+        active_users = get_active_users(db)
         posts = list(db.blog_posts.find({"author": {"$in": active_users}}))
         response = make_response(
             render_template("index.html", all_posts=posts, user=current_user)
@@ -944,13 +984,14 @@ def register():
                 "is_active": True,  # Default to active
             }
             # insert new_user into the database
-            users.insert_one(new_user)
+            insert_result = users.insert_one(new_user)
+            new_user_id = insert_result.inserted_id
 
             # Check if there are any admins, if not, make this user an admin
             admin_count = users.count_documents({"is_admin": True})
             if admin_count == 0:
                 users.update_one(
-                    {"_id": new_user["_id"]}, {"$set": {"is_admin": True}}
+                    {"_id": new_user_id}, {"$set": {"is_admin": True}}
                 )
                 flash(
                     "You are the first user. You have been made an administrator."
@@ -1132,7 +1173,9 @@ def show_post(post_id):
             )
         else:
             # For POST requests (comments), we need fresh data
-            requested_post = db.blog_posts.find_one({"_id": get_id_for_query(post_id)})
+            requested_post = db.blog_posts.find_one(
+                {"_id": get_id_for_query(post_id)}
+            )
             requested_post_comments = db.blog_comments.find(
                 {"parent_post": get_id_for_query(post_id)}
             )
@@ -1149,22 +1192,16 @@ def show_post(post_id):
             return redirect(url_for("get_all_posts"))
 
         # Filter comments to only show those from active users
-        active_users = [
-            user["name"] for user in db.users.find({"is_active": True})
-        ]
+        active_users = get_active_users(db)
         if hasattr(requested_post_comments, "__iter__"):
-            requested_post_comments = [
-                comment
-                for comment in requested_post_comments
-                if comment["comment_author"] in active_users
-            ]
+            requested_post_comments = filter_active_user_content(
+                requested_post_comments, active_users, "comment_author"
+            )
         else:
             # If it's a cursor, convert to list and filter
-            requested_post_comments = [
-                comment
-                for comment in list(requested_post_comments)
-                if comment["comment_author"] in active_users
-            ]
+            requested_post_comments = filter_active_user_content(
+                list(requested_post_comments), active_users, "comment_author"
+            )
 
         # commenting on a post
         if form.validate_on_submit():
@@ -1406,7 +1443,7 @@ def search():
         return redirect(url_for("get_all_posts"))
 
     # Get active users
-    active_users = [user["name"] for user in db.users.find({"is_active": True})]
+    active_users = get_active_users(db)
 
     # For neosqlite, we'll use the $text operator with FTS for efficient text search
     if query:
@@ -1663,7 +1700,9 @@ def make_admin(current_user, user_id):
         return redirect(url_for("admin_panel"))
 
     # Make the user an admin
-    db.users.update_one({"_id": get_id_for_query(user_id)}, {"$set": {"is_admin": True}})
+    db.users.update_one(
+        {"_id": get_id_for_query(user_id)}, {"$set": {"is_admin": True}}
+    )
 
     flash(f"User '{user_to_make_admin['name']}' is now an admin.")
 
@@ -1756,7 +1795,9 @@ def page_not_found_500(e):
 
 if __name__ == "__main__":
     # Check if we're running in Docker by looking for the FLASK_RUN_HOST environment variable
-    host = os.environ.get("FLASK_RUN_HOST", config.get("app", {}).get("ip", "127.0.0.1"))
+    host = os.environ.get(
+        "FLASK_RUN_HOST", config.get("app", {}).get("ip", "127.0.0.1")
+    )
     app.run(
         host=host,
         port=int(config.get("app", {}).get("port", 5000)),

@@ -1,0 +1,25 @@
+[app]
+# Secret key for Flask sessions and CSRF protection
+secret_key = "your-secret-key-here"
+# IP address to bind the server to
+ip = "0.0.0.0"
+# Port to run the server on
+port = 5000
+# Site metadata
+site_title = "Neo Bloggy"
+site_author = "Neo Bloggy"
+site_description = "Modern Blogging Platform"
+
+[database]
+# Path to the NeoSQLite database file
+db_path = "/data/neo-bloggy.db"
+
+[caching]
+# Enable or disable caching mechanism
+cache_enabled = false
+# Cache timeout in seconds (default: 5 minutes)
+cache_timeout = 300
+
+[file_uploads]
+# Maximum file upload size in bytes (16MB = 16 * 1024 * 1024)
+max_content_length = 16777216

@@ -26,7 +26,7 @@ import tomllib
 
 def get_id_for_query(id_value):
     """Convert an ID value for database query, handling both integer and ObjectId formats.
-    
+
     For NeoSQLite v1.1.0 compatibility:
     - New documents have ObjectId in _id field
     - Old documents may still have integer _id until updated
@@ -44,10 +44,11 @@ def get_id_for_query(id_value):
         # For NeoSQLite v1.1.0, we might need to use the ObjectId type
         try:
             import neosqlite
+
             # Try to create an ObjectId from the value
-            object_id = neosqlite.ObjectId(id_value)
+            object_id = neosqlite.objectid.ObjectId(id_value)
             return object_id
-        except:
+        except Exception:
             # If all attempts fail, return the original value
             return id_value
 

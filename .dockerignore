@@ -1,0 +1,65 @@
+# Ignore git and other unnecessary files/directories
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache
+.coverage
+.coverage.*
+.cache
+.nox
+.tox
+.hg
+.hgignore
+.hgcheck
+.DS_Store
+Thumbs.db
+
+# Ignore virtual environments
+venv/
+env/
+ENV/
+
+# Ignore log files
+*.log
+
+# Ignore test directories
+tests/
+test/
+
+# Ignore IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore build artifacts
+build/
+dist/
+*.egg-info/
+.pydistutils.cfg
+
+# Ignore temporary files
+tmp/
+temp/
+
+# Ignore OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Ignore SQLite db with its journal files
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Ignore app config
+config.toml

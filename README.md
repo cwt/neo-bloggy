@@ -233,6 +233,39 @@ This allows you to place your configuration file in any location, making it easi
 
 This application can be easily deployed to platforms like Heroku without requiring a separate MongoDB database. The NeoSQLite database file will be created automatically when the application runs.
 
+### Docker Deployment
+
+Neo Bloggy can be easily deployed using Docker, with support for multiple architectures including riscv64, x86_64, arm64, and others.
+
+#### Building the Docker Image
+
+To build the Docker image locally:
+
+```bash
+docker build -t neo-bloggy .
+```
+
+#### Running with Docker
+
+To run the application using Docker:
+
+```bash
+docker run -p 5000:5000 -v /path/to/data:/data:z neo-bloggy
+```
+
+This command:
+- Maps port 5000 from the container to port 5000 on the host
+- Mounts the database file for persistence
+- Mounts the configuration file for customization
+
+#### Configuration with Docker
+
+When running with Docker, you can customize the application behavior through environment variables:
+
+- `NEO_BLOGGY_CONFIG_PATH`: Path to the configuration file (default: `/data/config.toml`)
+
+You can also create your own `config.toml` file and mount it as a volume to customize the application settings.
+
 ## Original Project
 
 This project was originally forked from [Medium Bloggy](https://github.com/leithdm/medium-bloggy), a project by [leithdm](https://github.com/leithdm). For information about the original project that used MongoDB, please see [ORIGINAL_README.md](ORIGINAL_README.md).

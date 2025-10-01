@@ -165,7 +165,7 @@
           <h5 class="card-title">Search Indexes</h5>
           <p class="card-text">Rebuild the full-text search indexes for blog posts to ensure search results are up-to-date.</p>
           <form method="POST" action="{{ url_for('rebuild_search_indexes') }}">
-            <button type="submit" class="btn btn-warning">Rebuild Search Indexes</button>
+            <div class="form-group submit-group"><button type="submit" class="btn btn-warning">Rebuild Search Indexes</button></div>
           </form>
         </div>
       </div>

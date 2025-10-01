@@ -320,3 +320,21 @@ article img {
 .breadcrumb-item + .breadcrumb-item::before {
     content: ">"; /* Escape the > character */
 }
+
+/*------------------------------------*\
+ #FORM BUTTONS
+\*------------------------------------*/
+
+.form-group {
+    margin-bottom: 1rem; /* Add consistent spacing between form elements */
+}
+
+.form-group.submit-group {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1.5rem; /* Add space above the submit button */
+}
+
+.form-group.submit-group .btn {
+    margin-left: auto; /* Ensure button stays right-aligned */
+}

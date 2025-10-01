@@ -30,7 +30,7 @@ We've significantly modified this project to work with NeoSQLite, demonstrating 
 ### Back-End Technologies
 - Python 3.x
 - Flask 3.1
-- NeoSQLite 0.4.0 or newer
+- NeoSQLite 1.2.1 or newer
 - Flask-Bootstrap5 2.5.0
 - Flask-WTF 1.2.2
 

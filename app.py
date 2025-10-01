@@ -1,6 +1,6 @@
 from PIL import Image
 from bleach.css_sanitizer import CSSSanitizer
-from datetime import date
+from datetime import datetime
 from flask import (
     Flask,
     flash,
@@ -280,6 +280,17 @@ def clear_cache():
     cache_storage.clear()
 
 
+# Add a filter to get datetime field from an object (fallback to date if needed)
+@app.template_filter("get_datetime")
+def get_datetime_filter(obj):
+    """Jinja2 filter to get datetime field from an object, falling back to date if needed."""
+    if isinstance(obj, dict):
+        # Try 'datetime' first, then fall back to 'date'
+        return obj.get("datetime") or obj.get("date") or ""
+    # If it's already a string/datetime, return as is
+    return obj
+
+
 # Example of how to use caching for expensive operations
 @cached_result
 def get_post_with_comments(post_id):
@@ -292,7 +303,9 @@ def get_post_with_comments(post_id):
     post = db.blog_posts.find_one({"_id": get_id_for_query(post_id)})
     if post:
         comments = list(
-            db.blog_comments.find({"parent_post": get_id_for_query(post_id)})
+            db.blog_comments.find(
+                {"parent_post": get_id_for_query(post_id)}
+            ).sort("datetime", -1)
         )
         # Filter comments to only show those from active users
         active_users = get_active_users(db)
@@ -308,6 +321,30 @@ def get_post_with_comments(post_id):
 def markdown_filter(markdown_text):
     """Jinja2 filter to convert markdown to HTML."""
     return markdown_to_html(markdown_text)
+
+
+# Add custom filter for datetime formatting
+@app.template_filter("format_datetime")
+def format_datetime_filter(datetime_str):
+    """Jinja2 filter to format ISO datetime string to readable format."""
+    try:
+        # Parse the ISO format datetime string
+        if isinstance(datetime_str, str):
+            dt = datetime.fromisoformat(datetime_str.replace("Z", "+00:00"))
+        else:
+            # If it's already a datetime object
+            dt = datetime_str
+
+        # Format to a readable format - if time is 00:00:00, show just date
+        if dt.hour == 0 and dt.minute == 0 and dt.second == 0:
+            # Only show date part
+            return dt.strftime("%B %d, %Y")
+        else:
+            # Show both date and time
+            return dt.strftime("%B %d, %Y at %H:%M")
+    except (ValueError, AttributeError):
+        # If parsing fails, return the original string
+        return datetime_str
 
 
 def minify_html(html):
@@ -354,6 +391,10 @@ def get_db():
                     else None
                 ),  # Tokenizers can be more than one.
             )
+            # Create datetime index on datetime
+            g.db.blog_posts.create_index("datetime", datetime_field=True)
+            # Create datetime index on comments datetime
+            g.db.blog_comments.create_index("datetime", datetime_field=True)
             # Create FTS indexes for blog posts if they don't exist
             g.db.blog_posts.create_index(
                 "title", fts=True, tokenizer=TOKENIZER_NAME
@@ -918,7 +959,11 @@ def get_all_posts():
         db = get_db()
         # Only show posts from active users
         active_users = get_active_users(db)
-        posts = list(db.blog_posts.find({"author": {"$in": active_users}}))
+        posts = list(
+            db.blog_posts.find({"author": {"$in": active_users}}).sort(
+                "datetime", -1
+            )
+        )
         result = render_template("index.html", all_posts=posts)
         cache_storage[cache_key] = (result, current_time)
         response = make_response(result)
@@ -931,7 +976,11 @@ def get_all_posts():
         db = get_db()
         # Only show posts from active users
         active_users = get_active_users(db)
-        posts = list(db.blog_posts.find({"author": {"$in": active_users}}))
+        posts = list(
+            db.blog_posts.find({"author": {"$in": active_users}}).sort(
+                "datetime", -1
+            )
+        )
         response = make_response(
             render_template("index.html", all_posts=posts, user=current_user)
         )
@@ -1073,7 +1122,7 @@ def profile(current_user, username):
         flash("User not found.")
         return redirect(url_for("login"))
 
-    posts = db.blog_posts.find({"author": username})
+    posts = db.blog_posts.find({"author": username}).sort("datetime", -1)
     return render_template(
         "profile.html", username=username, posts=posts, user=user
     )
@@ -1178,7 +1227,7 @@ def show_post(post_id):
             )
             requested_post_comments = db.blog_comments.find(
                 {"parent_post": get_id_for_query(post_id)}
-            )
+            ).sort("datetime", -1)
 
         # Handle case where post is not found
         if not requested_post:
@@ -1215,6 +1264,7 @@ def show_post(post_id):
                 "text": form.comment_text.data,
                 "comment_author": current_user["name"],
                 "parent_post": get_id_for_query(post_id),
+                "datetime": datetime.now().isoformat(),
             }
 
             db.blog_comments.insert_one(new_comment)
@@ -1258,7 +1308,7 @@ def create_post(current_user):
                 "body": form.body.data,
                 "img_url": form.img_url.data,
                 "author": current_user["name"],
-                "date": date.today().strftime("%B %d, %Y"),
+                "datetime": datetime.now().isoformat(),
             }
             db.blog_posts.insert_one(new_post)
             flash("Post Successfully Added")
@@ -1459,7 +1509,7 @@ def search():
                             {"author": {"$in": active_users}},
                         ]
                     }
-                )
+                ).sort("datetime", -1)
             )
 
             # Add search relevance scoring
@@ -1470,8 +1520,11 @@ def search():
                 else:
                     post["search_score"] = 0
 
-            # Sort by search relevance (highest score first)
-            posts.sort(key=lambda x: x.get("search_score", 0), reverse=True)
+            # Sort by search relevance (highest score first), but maintain datetime order for ties
+            posts.sort(
+                key=lambda x: (x.get("search_score", 0), x.get("datetime", "")),
+                reverse=True,
+            )
 
         except Exception:
             # If FTS query fails due to special characters, fall back to regex search
@@ -1508,7 +1561,7 @@ def search():
                             {"author": {"$in": active_users}},
                         ]
                     }
-                )
+                ).sort("datetime", -1)
             )
     else:
         # Only show posts from active users
@@ -1737,25 +1790,31 @@ def rebuild_search_indexes(current_user):
 def sitemap():
     """Generate a sitemap for the blog."""
     db = get_db()
-    posts = list(db.blog_posts.find())
+    posts = list(db.blog_posts.find().sort("datetime", -1))
 
     # Get the current date for the sitemap
-    from datetime import datetime
-
     current_date = datetime.utcnow().strftime("%Y-%m-%d")
 
-    # Process posts to ensure proper date formatting
+    # Process posts to ensure proper datetime formatting
     for post in posts:
-        # If post has a date field, try to convert it to proper format
-        if "date" in post:
-            # The existing date format is "Month Day, Year" (e.g., "September 15, 2025")
-            # We need to convert it to "YYYY-MM-DD" format
+        # Check for datetime field first, then fallback to date for backward compatibility
+        datetime_value = post.get("datetime") or post.get("date")
+
+        if datetime_value:
+            # The datetime could be in ISO format datetime string
             try:
-                # Parse the existing date format
-                date_obj = datetime.strptime(post["date"], "%B %d, %Y")
-                # Format it as YYYY-MM-DD
+                if isinstance(datetime_value, str):
+                    # Parse the ISO format datetime string
+                    date_obj = datetime.fromisoformat(
+                        datetime_value.replace("Z", "+00:00")
+                    )
+                else:
+                    # If it's already a datetime object, use it directly
+                    date_obj = datetime_value
+
+                # Format it as YYYY-MM-DD for sitemap
                 post["lastmod"] = date_obj.strftime("%Y-%m-%d")
-            except ValueError:
+            except (ValueError, AttributeError):
                 # If parsing fails, use current date as fallback
                 post["lastmod"] = current_date
         else:

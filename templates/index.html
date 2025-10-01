@@ -34,7 +34,7 @@
                            <h5 class="card-title">{{post.title}}</h5>
                            <p class="card-text">{{ post.subtitle }}</p>
                         </a>
-                        <p class="card-text"><small class="text-muted">{{post.date}} posted by
+                        <p class="card-text"><small class="text-muted">{{post | get_datetime | format_datetime}} posted by
                            {{post.author}}</small>
                         </p>
                      </div>

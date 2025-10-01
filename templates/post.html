@@ -5,7 +5,7 @@
       <h1 class="display-2">{{ post.title }}</h1>
       <hr class="my-4">
       <p>{{ post.subtitle }}</p>
-      <p><small>Posted by {{ post.author }} on {{ post.date }}</small></p>
+      <p><small>Posted by {{ post.author }} on {{ post | get_datetime | format_datetime }}</small></p>
    </div>
 </div>
 
@@ -77,7 +77,7 @@
                      <div class="commentText">
                         {{comment.text|markdown|safe}}
                         <div class="comment-meta">
-                           <span class="date sub-text">Posted by {{comment.comment_author}}</span>
+                           <span class="date sub-text">Posted by {{comment.comment_author}} on {{comment | get_datetime | format_datetime}}</span>
                            {% if session.user and session.user == comment.comment_author %}
                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
                               data-bs-target="#deletecomment{{ comment._id }}">

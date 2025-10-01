@@ -39,7 +39,7 @@
           "@type": "Person",
           "name": "{{ post.author }}"
         },
-        "datePublished": "{{ post.date }}",
+        "datePublished": "{{ post.datetime or post.date }}",
         "description": "{{ post.subtitle or post.title }}",
         {% if post.img_url %}
         "image": "{{ post.img_url }}",

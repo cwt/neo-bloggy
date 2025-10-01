@@ -338,3 +338,21 @@ article img {
 .form-group.submit-group .btn {
     margin-left: auto; /* Ensure button stays right-aligned */
 }
+
+/*------------------------------------*\
+ #SCROLLBAR CONSISTENCY
+\*------------------------------------*/
+
+/* Force scrollbar to always be visible to prevent content shift */
+body {
+    overflow-y: scroll;
+}
+
+/*------------------------------------*\
+ #SCROLLBAR CONSISTENCY
+\*------------------------------------*/
+
+/* Compensate for scrollbar width to prevent content shifting */
+body {
+    padding-right: calc(-1 * (100vw - 100%));
+}

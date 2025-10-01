@@ -1141,18 +1141,27 @@ def edit_profile(current_user):
         flash("Your account has been disabled. You cannot edit your profile.")
         return redirect(url_for("get_all_posts"))
 
-    form = EditProfileForm(obj=current_user)
+    form = EditProfileForm()
+    # Populate form fields manually, except for name field (which was removed)
+    if request.method == "GET":
+        form.email.data = current_user["email"]
+        form.security_question.data = current_user.get("security_question", "")
+        # Note: We don't populate security_answer for security reasons
 
     if form.validate_on_submit():
         db = get_db()
-        # Check if the new email already exists
+        # Check if the new email already exists (excluding current user)
         if form.email.data != current_user["email"]:
-            if db.users.find_one({"email": form.email.data}):
+            if db.users.find_one(
+                {
+                    "email": form.email.data,
+                    "_id": {"$ne": get_id_for_query(current_user["_id"])},
+                }
+            ):
                 flash("That email is already in use.", "error")
                 return render_template("edit_profile.html", form=form)
 
         update_data = {
-            "name": form.name.data,
             "email": form.email.data,
             "security_question": form.security_question.data,
             "security_answer": generate_password_hash(
@@ -1166,13 +1175,16 @@ def edit_profile(current_user):
                 form.password.data, method="pbkdf2:sha256", salt_length=8
             )
 
-        db.users.update_one({"_id": current_user["_id"]}, {"$set": update_data})
+        # Update the user's profile in the database
+        db.users.update_one(
+            {"_id": get_id_for_query(current_user["_id"])},
+            {"$set": update_data},
+        )
+
         session.permanent = True  # Make sure session remains permanent
-        session["user"] = form.name.data  # Update session with new name
         flash("Profile updated successfully!")
-        return redirect(url_for("profile", username=session["user"]))
+        return redirect(url_for("profile", username=current_user["name"]))
     elif request.method == "GET":
-        form.name.data = current_user["name"]
         form.email.data = current_user["email"]
         form.security_question.data = current_user.get("security_question", "")
 

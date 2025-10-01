@@ -103,9 +103,6 @@ class PasswordRecoveryForm(FlaskForm):
 
 # ----- EDIT PROFILE FORM ----- #
 class EditProfileForm(FlaskForm):
-    name = StringField(
-        "Name", validators=[DataRequired(), Length(min=3, max=25)]
-    )
     email = StringField("Email address", validators=[DataRequired(), Email()])
     password = PasswordField(
         "New Password",

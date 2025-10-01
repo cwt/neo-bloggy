@@ -732,7 +732,7 @@ def list_images():
         # Find all files in GridFS for the current user by querying the files collection directly
         db = get_db()
         files_collection = db.db.execute(
-            f"SELECT * FROM "fs.files" WHERE json_extract(metadata, '$.user') = ?",
+            f"SELECT * FROM \"fs.files\" WHERE json_extract(metadata, '$.user') = ?",
             (session['user'],)
         )
 
@@ -877,7 +877,7 @@ def upload_image(current_user):
             # Find all files in GridFS for the current user by querying the files collection directly
             db = get_db()
             files_collection = db.db.execute(
-                f"SELECT * FROM "fs.files" WHERE json_extract(metadata, '$.user') = ?",
+                f"SELECT * FROM \"fs.files\" WHERE json_extract(metadata, '$.user') = ?",
                 (current_user['name'],)
             )
 

@@ -41,7 +41,7 @@ class RegisterForm(FlaskForm):
         ],
     )
     confirm = PasswordField("Repeat Password")
-    name = StringField("Name", validators=[Length(min=4, max=25)])
+    name = StringField("Name", validators=[Length(min=3, max=25)])
     security_question = SelectField(
         "Security Question",
         choices=SECURITY_QUESTIONS,
@@ -104,7 +104,7 @@ class PasswordRecoveryForm(FlaskForm):
 # ----- EDIT PROFILE FORM ----- #
 class EditProfileForm(FlaskForm):
     name = StringField(
-        "Name", validators=[DataRequired(), Length(min=4, max=25)]
+        "Name", validators=[DataRequired(), Length(min=3, max=25)]
     )
     email = StringField("Email address", validators=[DataRequired(), Email()])
     password = PasswordField(

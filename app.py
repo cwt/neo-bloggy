@@ -194,10 +194,10 @@ cache_storage = {}
 def get_id_for_query(id_value):
     """Convert an ID value for database query, handling both integer and ObjectId formats.
 
-    For NeoSQLite v1.1.0 compatibility:
+    For maximum compatibility:
     - New documents have ObjectId in _id field
     - Old documents may still have integer _id until updated
-    - Also check the 'id' field which always contains the integer ID for all documents
+    - Returns appropriate format based on NeoSQLite requirements
     """
     try:
         # Try to parse as integer for backward compatibility
@@ -206,13 +206,13 @@ def get_id_for_query(id_value):
         return int_id
     except (ValueError, TypeError):
         # If it's not an integer, it might already be an ObjectId hex string
-        # For NeoSQLite v1.1.0, we need to return the hex string representation for parameter binding
+        # Return string representation for parameter binding compatibility
         try:
             import neosqlite
 
             # Try to create an ObjectId from the value to validate it
             object_id = neosqlite.objectid.ObjectId(id_value)
-            # Return the string representation which should work with NeoSQLite parameter binding
+            # Return string representation for broader compatibility
             return str(object_id)
         except Exception:
             # If all attempts fail, return the original value
@@ -729,45 +729,33 @@ def list_images():
         if gfs is None:
             return jsonify({"error": "File storage system unavailable"}), 500
 
-        # Find all files in GridFS for the current user by querying the files collection directly
-        db = get_db()
-        files_collection = db.db.execute(
-            f"SELECT * FROM \"fs.files\" WHERE json_extract(metadata, '$.user') = ?",
-            (session['user'],)
-        )
-
-        # Sort by upload time (newest first) - the uploadDate is the 5th column (index 4)
-        files = sorted(files, key=lambda x: x[4], reverse=True)
+        # Use GridFS to find files for the current user by querying metadata
+        # NeoSQLite GridFS doesn't support sort/limit in the query, so we handle it in Python
+        cursor = gfs.find({"metadata.user": session["user"]})
+        files = list(cursor)
+        # Sort by upload date in Python (newest first)
+        files.sort(key=lambda x: x.upload_date, reverse=True)
 
         # Create list of image data
         images = []
-        for file_row in files:
-            # From database inspection, column 1 contains the actual GridFS file ID, not column 0 (which is an internal integer)
-            file_id = file_row[
-                1
-            ]  # This should be the actual GridFS file ID (from our test, column 1 has the GridFS ID)
-            filename = file_row[2]  # filename is now the third column
-            file_length = file_row[3]  # length is the fourth column
-            upload_date = file_row[5]  # uploadDate is now the sixth column
+        for file_doc in files:
+            file_id = file_doc._id
+            filename = file_doc.filename
+            file_length = file_doc.length
+            upload_date = file_doc.upload_date
 
             file_url = url_for("gridfs_file", file_id=file_id, _external=True)
 
             # Extract original filename from metadata if available
-            import json
-
-            metadata_str = file_row[7]  # metadata is now the eighth column
-            try:
-                metadata = json.loads(metadata_str)
-                display_name = metadata.get("original_filename", filename)
-            except Exception:
-                display_name = filename
+            metadata = getattr(file_doc, "metadata", {})
+            display_name = metadata.get("original_filename", filename)
 
             images.append(
                 {
                     "name": display_name,
                     "url": file_url,
                     "size": file_length,
-                    "modified": upload_date,
+                    "modified": str(upload_date) if upload_date else None,
                 }
             )
 
@@ -874,35 +862,23 @@ def upload_image(current_user):
         if gfs is None:
             formatted_files = []
         else:
-            # Find all files in GridFS for the current user by querying the files collection directly
-            db = get_db()
-            files_collection = db.db.execute(
-                f"SELECT * FROM \"fs.files\" WHERE json_extract(metadata, '$.user') = ?",
-                (current_user['name'],)
-            )
-
-            # Sort by upload time (newest first) and limit to last 12 files
-            files = sorted(files, key=lambda x: x[5], reverse=True)[
-                :12
-            ]  # x[5] is the 'uploadDate' column
+            # Use GridFS to find files for the current user by querying metadata
+            # NeoSQLite GridFS doesn't support sort/limit in the query, so we handle it in Python
+            cursor = gfs.find({"metadata.user": current_user["name"]})
+            files = list(cursor)
+            # Sort by upload date in Python (newest first) and limit to 12
+            files.sort(key=lambda x: x.upload_date, reverse=True)
+            files = files[:12]  # Limit to last 12 files after sorting
 
             # Create display structure
             formatted_files = []
-            for file_row in files:
-                file_id = file_row[
-                    1
-                ]  # This gets the actual GridFS file ID from column 1
-                filename = file_row[2]  # filename is now the third column
+            for file_doc in files:
+                file_id = file_doc._id
+                filename = file_doc.filename
 
                 # Extract original filename from metadata if available
-                import json
-
-                metadata_str = file_row[6]  # metadata is the seventh column
-                try:
-                    metadata = json.loads(metadata_str)
-                    display_name = metadata.get("original_filename", filename)
-                except Exception:
-                    display_name = filename
+                metadata = getattr(file_doc, "metadata", {})
+                display_name = metadata.get("original_filename", filename)
 
                 formatted_files.append(
                     {
@@ -1176,10 +1152,30 @@ def edit_profile(current_user):
             )
 
         # Update the user's profile in the database
-        db.users.update_one(
-            {"_id": get_id_for_query(current_user["_id"])},
-            {"$set": update_data},
-        )
+        # Try to update with processed ID first
+        try:
+            db.users.update_one(
+                {"_id": get_id_for_query(current_user["_id"])},
+                {"$set": update_data},
+            )
+        except Exception as e:
+            # If parameter binding fails, try with ObjectId directly
+            if "Error binding parameter" in str(e) and "ObjectId" in str(e):
+                import neosqlite
+
+                # Convert to ObjectId if it's a valid hex string
+                try:
+                    object_id = neosqlite.objectid.ObjectId(current_user["_id"])
+                    db.users.update_one(
+                        {"_id": object_id},
+                        {"$set": update_data},
+                    )
+                except Exception:
+                    # If all else fails, re-raise the original error
+                    raise e
+            else:
+                # Not the specific error we're handling, re-raise
+                raise e
 
         session.permanent = True  # Make sure session remains permanent
         flash("Profile updated successfully!")
@@ -1368,17 +1364,44 @@ def edit_post(current_user, post_id):
             body=post["body"],
         )
         if edit_form.validate_on_submit():
-            db.blog_posts.update_one(
-                {"_id": get_id_for_query(post_id)},
-                {
-                    "$set": {
-                        "title": edit_form.title.data,
-                        "subtitle": edit_form.subtitle.data,
-                        "img_url": edit_form.img_url.data,
-                        "body": edit_form.body.data,
-                    }
-                },
-            )
+            # Try to update with processed ID first
+            try:
+                db.blog_posts.update_one(
+                    {"_id": get_id_for_query(post_id)},
+                    {
+                        "$set": {
+                            "title": edit_form.title.data,
+                            "subtitle": edit_form.subtitle.data,
+                            "img_url": edit_form.img_url.data,
+                            "body": edit_form.body.data,
+                        }
+                    },
+                )
+            except Exception as e:
+                # If parameter binding fails, try with ObjectId directly
+                if "Error binding parameter" in str(e) and "ObjectId" in str(e):
+                    import neosqlite
+
+                    # Convert to ObjectId if it's a valid hex string
+                    try:
+                        object_id = neosqlite.objectid.ObjectId(post_id)
+                        db.blog_posts.update_one(
+                            {"_id": object_id},
+                            {
+                                "$set": {
+                                    "title": edit_form.title.data,
+                                    "subtitle": edit_form.subtitle.data,
+                                    "img_url": edit_form.img_url.data,
+                                    "body": edit_form.body.data,
+                                }
+                            },
+                        )
+                    except Exception:
+                        # If all else fails, re-raise the original error
+                        raise e
+                else:
+                    # Not the specific error we're handling, re-raise
+                    raise e
             # Clear cache since we've modified a post
             if CACHE_ENABLED:
                 # Clear cache for this specific post
@@ -1422,7 +1445,24 @@ def delete_post(current_user, post_id):
             flash("You can only delete your own posts.")
             return redirect(url_for("get_all_posts"))
 
-        db.blog_posts.delete_one({"_id": get_id_for_query(post_id)})
+        # Try to delete with processed ID first
+        try:
+            db.blog_posts.delete_one({"_id": get_id_for_query(post_id)})
+        except Exception as e:
+            # If parameter binding fails, try with ObjectId directly
+            if "Error binding parameter" in str(e) and "ObjectId" in str(e):
+                import neosqlite
+
+                # Convert to ObjectId if it's a valid hex string
+                try:
+                    object_id = neosqlite.objectid.ObjectId(post_id)
+                    db.blog_posts.delete_one({"_id": object_id})
+                except Exception:
+                    # If all else fails, re-raise the original error
+                    raise e
+            else:
+                # Not the specific error we're handling, re-raise
+                raise e
         flash("Post Successfully Deleted")
         # Clear cache since we've deleted a post
         if CACHE_ENABLED:
@@ -1475,7 +1515,24 @@ def delete_comment(current_user, comment_id):
             return redirect(url_for("show_post", post_id=post_id))
 
     # Proceed with deletion
-    db.blog_comments.delete_one({"_id": get_id_for_query(comment_id)})
+    # Try to delete with processed ID first
+    try:
+        db.blog_comments.delete_one({"_id": get_id_for_query(comment_id)})
+    except Exception as e:
+        # If parameter binding fails, try with ObjectId directly
+        if "Error binding parameter" in str(e) and "ObjectId" in str(e):
+            import neosqlite
+
+            # Convert to ObjectId if it's a valid hex string
+            try:
+                object_id = neosqlite.objectid.ObjectId(comment_id)
+                db.blog_comments.delete_one({"_id": object_id})
+            except Exception:
+                # If all else fails, re-raise the original error
+                raise e
+        else:
+            # Not the specific error we're handling, re-raise
+            raise e
     flash("Comment Successfully Deleted")
     post_id = request.args.get("post_id")
     # Clear cache for this post since we've deleted a comment
@@ -1735,10 +1792,31 @@ def toggle_user_status(current_user, user_id):
         return redirect(url_for("admin_panel"))
 
     # Toggle the user's active status
+    # Toggle the user's active status
     new_status = not user_to_toggle.get("is_active", True)
-    db.users.update_one(
-        {"_id": get_id_for_query(user_id)}, {"$set": {"is_active": new_status}}
-    )
+    # Try to update with processed ID first
+    try:
+        db.users.update_one(
+            {"_id": get_id_for_query(user_id)},
+            {"$set": {"is_active": new_status}},
+        )
+    except Exception as e:
+        # If parameter binding fails, try with ObjectId directly
+        if "Error binding parameter" in str(e) and "ObjectId" in str(e):
+            import neosqlite
+
+            # Convert to ObjectId if it's a valid hex string
+            try:
+                object_id = neosqlite.objectid.ObjectId(user_id)
+                db.users.update_one(
+                    {"_id": object_id}, {"$set": {"is_active": new_status}}
+                )
+            except Exception:
+                # If all else fails, re-raise the original error
+                raise e
+        else:
+            # Not the specific error we're handling, re-raise
+            raise e
 
     status_text = "enabled" if new_status else "disabled"
     flash(f"User '{user_to_toggle['name']}' has been {status_text}.")
@@ -1765,9 +1843,28 @@ def make_admin(current_user, user_id):
         return redirect(url_for("admin_panel"))
 
     # Make the user an admin
-    db.users.update_one(
-        {"_id": get_id_for_query(user_id)}, {"$set": {"is_admin": True}}
-    )
+    # Try to update with processed ID first
+    try:
+        db.users.update_one(
+            {"_id": get_id_for_query(user_id)}, {"$set": {"is_admin": True}}
+        )
+    except Exception as e:
+        # If parameter binding fails, try with ObjectId directly
+        if "Error binding parameter" in str(e) and "ObjectId" in str(e):
+            import neosqlite
+
+            # Convert to ObjectId if it's a valid hex string
+            try:
+                object_id = neosqlite.objectid.ObjectId(user_id)
+                db.users.update_one(
+                    {"_id": object_id}, {"$set": {"is_admin": True}}
+                )
+            except Exception:
+                # If all else fails, re-raise the original error
+                raise e
+        else:
+            # Not the specific error we're handling, re-raise
+            raise e
 
     flash(f"User '{user_to_make_admin['name']}' is now an admin.")
 

@@ -732,9 +732,9 @@ def list_images():
         # Find all files in GridFS for the current user by querying the files collection directly
         db = get_db()
         files_collection = db.db.execute(
-            f"SELECT * FROM \"fs.files\" WHERE json_extract(metadata, '$.user') = '{session['user']}'"
+            f"SELECT * FROM "fs.files" WHERE json_extract(metadata, '$.user') = ?",
+            (session['user'],)
         )
-        files = files_collection.fetchall()
 
         # Sort by upload time (newest first) - the uploadDate is the 5th column (index 4)
         files = sorted(files, key=lambda x: x[4], reverse=True)
@@ -877,9 +877,9 @@ def upload_image(current_user):
             # Find all files in GridFS for the current user by querying the files collection directly
             db = get_db()
             files_collection = db.db.execute(
-                f"SELECT * FROM \"fs.files\" WHERE json_extract(metadata, '$.user') = '{current_user['name']}'"
+                f"SELECT * FROM "fs.files" WHERE json_extract(metadata, '$.user') = ?",
+                (current_user['name'],)
             )
-            files = files_collection.fetchall()
 
             # Sort by upload time (newest first) and limit to last 12 files
             files = sorted(files, key=lambda x: x[5], reverse=True)[

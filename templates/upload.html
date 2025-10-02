@@ -22,7 +22,7 @@
             <div class="alert alert-success" role="alert" style="word-break: break-all; white-space: normal;">
                <strong>Image URL:</strong><br>
                <code>{{ message[9:] }}</code>
-               <button class="btn btn-xs btn-outline-secondary ms-2 copy-url-btn" 
+               <button class="btn btn-xs btn-outline-secondary ms-2 copy-url-btn"
                        data-url="{{ message[9:] }}" style="padding: 0.1rem 0.25rem; font-size: 0.75rem;">Copy</button>
             </div>
             {% else %}
@@ -57,8 +57,8 @@
                         <p class="card-text">
                            <small class="text-muted">{{ file.display_name }}</small>
                         </p>
-                        <input type="text" class="form-control form-control-sm" 
-                               value="{{ url_for('gridfs_file', file_id=file.file_id, _external=True) }}" 
+                        <input type="text" class="form-control form-control-sm"
+                               value="{{ url_for('gridfs_file', file_id=file.file_id, _external=True) }}"
                                readonly onclick="this.select()">
                      </div>
                   </div>

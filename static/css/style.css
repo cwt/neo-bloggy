@@ -343,16 +343,8 @@ article img {
  #SCROLLBAR CONSISTENCY
 \*------------------------------------*/
 
-/* Force scrollbar to always be visible to prevent content shift */
+/* Force scrollbar to always be visible to prevent content shift and compensate for width */
 body {
     overflow-y: scroll;
-}
-
-/*------------------------------------*\
- #SCROLLBAR CONSISTENCY
-\*------------------------------------*/
-
-/* Compensate for scrollbar width to prevent content shifting */
-body {
     padding-right: calc(-1 * (100vw - 100%));
 }

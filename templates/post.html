@@ -157,6 +157,11 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Editor namespace to avoid global pollution
+    const editorNS = {
+        currentEditor: null
+    };
+
     // Initialize EasyMDE for comment content
     if (document.getElementById('comment_text')) {
         var simplemde = new EasyMDE({
@@ -184,13 +189,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         var fileInput = document.createElement('input');
                         fileInput.type = 'file';
                         fileInput.accept = 'image/*';
-                        
+
                         fileInput.onchange = function(e) {
                             var file = e.target.files[0];
                             if (file) {
                                 var formData = new FormData();
                                 formData.append('file', file);
-                                
+
                                 // Upload file
                                 fetch('/upload', {
                                     method: 'POST',
@@ -213,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 });
                             }
                         };
-                        
+
                         fileInput.click();
                     },
                     className: "fa fa-upload",
@@ -223,8 +228,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     name: "browse",
                     action: function customFunction(editor) {
                         // Store reference to editor for later use
-                        window.currentEditor = editor;
-                        
+                        editorNS.currentEditor = editor;
+
                         // Load images and show modal
                         loadImagesAndShowModal();
                     },
@@ -234,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ]
         });
     }
-    
+
     // Function to load images and show modal
     function loadImagesAndShowModal() {
         // Show loading indicator
@@ -245,11 +250,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
         `;
-        
+
         // Show modal
         var imageBrowserModal = new bootstrap.Modal(document.getElementById('imageBrowserModal'));
         imageBrowserModal.show();
-        
+
         // Load images from API
         fetch('/api/images')
         .then(response => response.json())
@@ -260,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 data.images.forEach(image => {
                     html += `
                         <div class="col-md-3 mb-3">
-                            <div class="card image-browser-item" style="cursor: pointer;" 
+                            <div class="card image-browser-item" style="cursor: pointer;"
                                  onclick="selectImage('${image.url}', '${image.name}')">
                                 <img src="${image.url}" class="card-img-top" style="height: 150px; object-fit: cover;" alt="${image.name}">
                                 <div class="card-body p-2">
@@ -281,16 +286,16 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error loading images:', error);
         });
     }
-    
+
     // Function to select an image
     window.selectImage = function(url, name) {
         // Close modal
         var imageBrowserModal = bootstrap.Modal.getInstance(document.getElementById('imageBrowserModal'));
         imageBrowserModal.hide();
-        
+
         // Insert image into editor if we have a reference
-        if (window.currentEditor) {
-            var cm = window.currentEditor.codemirror;
+        if (editorNS.currentEditor) {
+            var cm = editorNS.currentEditor.codemirror;
             var output = '![' + name + '](' + url + ')';
             var cursor = cm.getCursor();
             cm.replaceSelection(output);

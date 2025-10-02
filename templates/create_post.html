@@ -3,9 +3,9 @@
 <main role="main">
    <div class="jumbotron write-jumbotron">
       <div class="container">
-         {% if is_edit: %}
+         {% if is_edit %}
          <h1 class="display-2">Edit Post</h1>
-         {% else: %}
+         {% else %}
          <h1 class="display-2" >New Post</h1>
          {% endif %}
          <hr class="my-4">
@@ -32,17 +32,17 @@
             <!-- Custom form rendering to add browse button for image URL -->
             <form method="POST" enctype="multipart/form-data">
                {{ form.hidden_tag() }}
-               
+
                <div class="form-group">
                   {{ form.title.label(class="form-control-label") }}
                   {{ form.title(class="form-control") }}
                </div>
-               
+
                <div class="form-group">
                   {{ form.subtitle.label(class="form-control-label") }}
                   {{ form.subtitle(class="form-control") }}
                </div>
-               
+
                <div class="form-group">
                   {{ form.img_url.label(class="form-control-label") }}
                   <div class="input-group">
@@ -54,12 +54,12 @@
                      </div>
                   </div>
                </div>
-               
+
                <div class="form-group">
                   {{ form.body.label(class="form-control-label") }}
                   {{ form.body(class="form-control", rows="10") }}
                </div>
-               
+
                <div class="form-group submit-group">
                   {{ form.submit(class="btn btn-success") }}
                </div>
@@ -111,15 +111,21 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Editor namespace to avoid global pollution
+    const editorNS = {
+        currentEditor: null,
+        selectingCoverImage: false
+    };
+
     // Handle browse cover image button
     document.getElementById('browseCoverImage').addEventListener('click', function() {
         // Set flag to indicate we're selecting a cover image
-        window.selectingCoverImage = true;
-        
+        editorNS.selectingCoverImage = true;
+
         // Load images and show modal
         loadImagesAndShowModal();
     });
-    
+
     // Initialize EasyMDE for post content
     if (document.getElementById('body')) {
         var simplemde = new EasyMDE({
@@ -152,13 +158,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         var fileInput = document.createElement('input');
                         fileInput.type = 'file';
                         fileInput.accept = 'image/*';
-                        
+
                         fileInput.onchange = function(e) {
                             var file = e.target.files[0];
                             if (file) {
                                 var formData = new FormData();
                                 formData.append('file', file);
-                                
+
                                 // Upload file
                                 fetch('/upload', {
                                     method: 'POST',
@@ -181,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 });
                             }
                         };
-                        
+
                         fileInput.click();
                     },
                     className: "fa fa-upload",
@@ -191,9 +197,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     name: "browse",
                     action: function customFunction(editor) {
                         // Store reference to editor for later use
-                        window.currentEditor = editor;
-                        window.selectingCoverImage = false;
-                        
+                        editorNS.currentEditor = editor;
+                        editorNS.selectingCoverImage = false;
+
                         // Load images and show modal
                         loadImagesAndShowModal();
                     },
@@ -203,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ]
         });
     }
-    
+
     // Initialize EasyMDE for comment content (if present)
     if (document.getElementById('comment_text')) {
         var commentMde = new EasyMDE({
@@ -230,13 +236,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         var fileInput = document.createElement('input');
                         fileInput.type = 'file';
                         fileInput.accept = 'image/*';
-                        
+
                         fileInput.onchange = function(e) {
                             var file = e.target.files[0];
                             if (file) {
                                 var formData = new FormData();
                                 formData.append('file', file);
-                                
+
                                 // Upload file
                                 fetch('/upload', {
                                     method: 'POST',
@@ -259,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 });
                             }
                         };
-                        
+
                         fileInput.click();
                     },
                     className: "fa fa-upload",
@@ -269,9 +275,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     name: "browse",
                     action: function customFunction(editor) {
                         // Store reference to editor for later use
-                        window.currentEditor = editor;
-                        window.selectingCoverImage = false;
-                        
+                        editorNS.currentEditor = editor;
+                        editorNS.selectingCoverImage = false;
+
                         // Load images and show modal
                         loadImagesAndShowModal();
                     },
@@ -281,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ]
         });
     }
-    
+
     // Function to load images and show modal
     function loadImagesAndShowModal() {
         // Show loading indicator
@@ -292,11 +298,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
         `;
-        
+
         // Show modal using Bootstrap 5 JavaScript
         var modal = new bootstrap.Modal(document.getElementById('imageBrowserModal'));
         modal.show();
-        
+
         // Load images from API
         fetch('/api/images')
         .then(response => response.json())
@@ -307,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 data.images.forEach(image => {
                     html += `
                         <div class="col-md-3 mb-3">
-                            <div class="card image-browser-item" style="cursor: pointer;" 
+                            <div class="card image-browser-item" style="cursor: pointer;"
                                  onclick="selectImage('${image.url}', '${image.name}')">
                                 <img src="${image.url}" class="card-img-top" style="height: 150px; object-fit: cover;" alt="${image.name}">
                                 <div class="card-body p-2">
@@ -328,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error loading images:', error);
         });
     }
-    
+
     // Function to select an image
     window.selectImage = function(url, name) {
         // Close modal using Bootstrap 5 JavaScript
@@ -336,15 +342,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modal) {
             modal.hide();
         }
-        
+
         // Check if we're selecting a cover image or inserting into editor
-        if (window.selectingCoverImage) {
+        if (editorNS.selectingCoverImage) {
             // Set the cover image URL in the form field
             document.getElementById('img_url').value = url;
-            window.selectingCoverImage = false;
-        } else if (window.currentEditor) {
+            editorNS.selectingCoverImage = false;
+        } else if (editorNS.currentEditor) {
             // Insert image into editor
-            var cm = window.currentEditor.codemirror;
+            var cm = editorNS.currentEditor.codemirror;
             var output = '![' + name + '](' + url + ')';
             var cursor = cm.getCursor();
             cm.replaceSelection(output);

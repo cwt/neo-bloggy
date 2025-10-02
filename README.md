@@ -250,11 +250,11 @@ docker build -t neo-bloggy .
 To run the application using Docker:
 
 ```bash
-docker run -p 5000:5000 -v /path/to/data:/data:z neo-bloggy
+docker run -p 8000:8000 -v /path/to/data:/data:z neo-bloggy
 ```
 
 This command:
-- Maps port 5000 from the container to port 5000 on the host
+- Maps port 8000 on the host to port 8000 in the container (where the application runs)
 - Mounts the database file for persistence
 - Mounts the configuration file for customization
 

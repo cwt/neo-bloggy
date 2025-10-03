@@ -15,25 +15,6 @@
    <div class="container">
       <div class="row">
          <div class="col-lg-8 col-md-10 mx-auto">
-            {% with messages = get_flashed_messages() %}
-            {% if messages %}
-            {% for message in messages %}
-            {% if message.startswith('URL_LINE:') %}
-            <div class="alert alert-success" role="alert" style="word-break: break-all; white-space: normal;">
-               <strong>Image URL:</strong><br>
-               <code>{{ message[9:] }}</code>
-               <button class="btn btn-xs btn-outline-secondary ms-2 copy-url-btn"
-                       data-url="{{ message[9:] }}" style="padding: 0.1rem 0.25rem; font-size: 0.75rem;">Copy</button>
-            </div>
-            {% else %}
-            <div class="alert alert-info" role="alert">
-               {{ message }}
-            </div>
-            {% endif %}
-            {% endfor %}
-            {% endif %}
-            {% endwith %}
-
             <form method="POST" enctype="multipart/form-data">
                <div class="form-group">
                   <label for="file">Choose Image</label>

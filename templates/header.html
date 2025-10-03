@@ -152,10 +152,10 @@
 
       {% with messages = get_flashed_messages() %}
       {% if messages %}
-      <div class="container mt-2">
+      <div class="container" style="position: absolute; top: 70px; left: 0; right: 0; z-index: 1000;">
          {% for message in messages %}
          {% if message.startswith('URL_LINE:') %}
-         <div class="alert alert-success" role="alert" style="word-break: break-all; white-space: normal;">
+         <div class="alert alert-success" role="alert" style="word-break: break-all; white-space: normal; background-color: rgba(209, 231, 221, 0.9) !important;">
             <strong>Image URL:</strong><br>
             <code>{{ message[9:] }}</code>
             <button class="btn btn-xs btn-outline-secondary ms-2 copy-url-btn"
@@ -163,9 +163,9 @@
          </div>
          {% else %}
             {% if 'already exists' in message or 'failed' in message or 'error' in message.lower() %}
-            <div class="alert alert-danger" role="alert">
+            <div class="alert alert-danger" role="alert" style="background-color: rgba(248, 215, 218, 0.9) !important;">
             {% else %}
-            <div class="alert alert-info" role="alert">
+            <div class="alert alert-info" role="alert" style="background-color: rgba(207, 244, 252, 0.9) !important;">
             {% endif %}
                {{ message }}
             </div>

@@ -391,10 +391,6 @@ def get_db():
                     else None
                 ),  # Tokenizers can be more than one.
             )
-            # Create datetime index on datetime
-            g.db.blog_posts.create_index("datetime", datetime_field=True)
-            # Create datetime index on comments datetime
-            g.db.blog_comments.create_index("datetime", datetime_field=True)
             # Create FTS indexes for blog posts if they don't exist
             g.db.blog_posts.create_index(
                 "title", fts=True, tokenizer=TOKENIZER_NAME
@@ -415,6 +411,13 @@ def get_db():
             g.db.blog_posts.create_index("subtitle", fts=True)
             # Add FTS index for body content to enable comprehensive search
             g.db.blog_posts.create_index("body", fts=True)
+        finally:
+            # Create datetime index on datetime
+            g.db.blog_posts.create_index("datetime", datetime_field=True)
+            # Create datetime index on comments datetime
+            g.db.blog_comments.create_index("datetime", datetime_field=True)
+            # Create unique index for user names
+            g.db.users.create_index("name", unique=True)
 
         # Initialize GridFS for file storage
         try:
@@ -1028,7 +1031,14 @@ def register():
             flash("Registration Successful")
             return redirect(url_for("profile", username=session["user"]))
         except Exception as e:
-            flash(f"Registration failed: {str(e)}")
+            # Check if the error is due to unique constraint violation on name
+            error_msg = str(e).lower()
+            if "unique" in error_msg and "name" in error_msg:
+                flash(
+                    "A user with that name already exists. Please choose a different name."
+                )
+            else:
+                flash(f"Registration failed: {str(e)}")
             return render_template("register.html", form=form)
     return render_template("register.html", form=form)
 

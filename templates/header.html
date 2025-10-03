@@ -152,7 +152,7 @@
 
       {% with messages = get_flashed_messages() %}
       {% if messages %}
-      <div class="container mt-3">
+      <div class="container mt-2">
          {% for message in messages %}
          {% if message.startswith('URL_LINE:') %}
          <div class="alert alert-success" role="alert" style="word-break: break-all; white-space: normal;">
@@ -162,9 +162,13 @@
                     data-url="{{ message[9:] }}" style="padding: 0.1rem 0.25rem; font-size: 0.75rem;">Copy</button>
          </div>
          {% else %}
-         <div class="alert alert-info" role="alert">
-            {{ message }}
-         </div>
+            {% if 'already exists' in message or 'failed' in message or 'error' in message.lower() %}
+            <div class="alert alert-danger" role="alert">
+            {% else %}
+            <div class="alert alert-info" role="alert">
+            {% endif %}
+               {{ message }}
+            </div>
          {% endif %}
          {% endfor %}
       </div>

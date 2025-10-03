@@ -69,6 +69,7 @@ RUN apk add --no-cache \
     tcl \
     sqlite-libs \
     icu-libs \
+    icu-data-full \
     bash
 
 # Create app directory

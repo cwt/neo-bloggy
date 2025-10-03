@@ -23,7 +23,9 @@ RUN apk add --no-cache \
     sqlite-dev \
     icu-dev \
     git \
-    bash
+    bash \
+    libwebp-dev \
+    libpng-dev
 
 # Clone fts5-icu-tokenizer repository
 RUN git clone https://github.com/cwt/fts5-icu-tokenizer.git /tmp/fts5-icu-tokenizer
@@ -70,7 +72,9 @@ RUN apk add --no-cache \
     sqlite-libs \
     icu-libs \
     icu-data-full \
-    bash
+    bash \
+    libwebp \
+    libpng
 
 # Create app directory
 WORKDIR /app

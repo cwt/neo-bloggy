@@ -1048,7 +1048,7 @@ def get_all_posts():
         db = get_db()
         # For logged-in users, show posts from active users (regardless of publisher status)
         # Admins see all posts including from inactive users, others see posts from active users only
-        if current_user.get("is_admin", False):
+        if current_user and current_user.get("is_admin", False):
             # Admins see all posts
             posts = list(db.blog_posts.find().sort("datetime", -1))
         else:

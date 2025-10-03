@@ -6,6 +6,9 @@
       <hr class="my-4">
       <p>{{ post.subtitle }}</p>
       <p><small>Posted by {{ post.author }} on {{ post | get_datetime | format_datetime }}</small></p>
+      {% if user and user.is_admin and post_author_info and not post_author_info.is_publisher %}
+      <p><small><span class="badge bg-warning">Unpublished Author</span> This post is not visible to regular users because the author is not a publisher.</small></p>
+      {% endif %}
    </div>
 </div>
 
@@ -241,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Function to load images and show modal
-    function loadImagesAndShowModal() {
+    function loadImagesAndShowModal(page = 1) {
         // Show loading indicator
         document.getElementById('imageBrowserContent').innerHTML = `
             <div class="text-center">
@@ -255,13 +258,14 @@ document.addEventListener('DOMContentLoaded', function() {
         var imageBrowserModal = new bootstrap.Modal(document.getElementById('imageBrowserModal'));
         imageBrowserModal.show();
 
-        // Load images from API
-        fetch('/api/images')
+        // Load images from API with pagination
+        fetch('/api/images?page=' + page + '&per_page=12')
         .then(response => response.json())
         .then(data => {
+            let html = '';
             if (data.images && data.images.length > 0) {
                 // Create image grid
-                let html = '<div class="row">';
+                html += '<div class="row">';
                 data.images.forEach(image => {
                     html += `
                         <div class="col-md-3 mb-3">
@@ -270,16 +274,54 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <img src="${image.url}" class="card-img-top" style="height: 150px; object-fit: cover;" alt="${image.name}">
                                 <div class="card-body p-2">
                                     <p class="card-text small text-truncate mb-0">${image.name}</p>
+                                    ${data.images[0].user ? '<small class="text-muted">By: ' + image.user + '</small>' : ''}
                                 </div>
                             </div>
                         </div>
                     `;
                 });
                 html += '</div>';
-                document.getElementById('imageBrowserContent').innerHTML = html;
+                
+                // Add pagination controls
+                if (data.pagination && data.pagination.pages > 1) {
+                    html += '<nav aria-label="Image pagination" class="mt-3">';
+                    html += '<ul class="pagination justify-content-center">';
+                    
+                    // Previous page
+                    if (data.pagination.page > 1) {
+                        html += `<li class="page-item"><a class="page-link" href="#" onclick="loadImagesAndShowModal(${data.pagination.page - 1}); return false;">&laquo; Previous</a></li>`;
+                    } else {
+                        html += '<li class="page-item disabled"><span class="page-link">&laquo; Previous</span></li>';
+                    }
+                    
+                    // Page numbers
+                    const startPage = Math.max(1, data.pagination.page - 2);
+                    const endPage = Math.min(data.pagination.pages, data.pagination.page + 2);
+                    
+                    for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
+                        if (pageNum === data.pagination.page) {
+                            html += `<li class="page-item active"><span class="page-link">${pageNum}</span></li>`;
+                        } else {
+                            html += `<li class="page-item"><a class="page-link" href="#" onclick="loadImagesAndShowModal(${pageNum}); return false;">${pageNum}</a></li>`;
+                        }
+                    }
+                    
+                    // Next page
+                    if (data.pagination.page < data.pagination.pages) {
+                        html += `<li class="page-item"><a class="page-link" href="#" onclick="loadImagesAndShowModal(${data.pagination.page + 1}); return false;">Next &raquo;</a></li>`;
+                    } else {
+                        html += '<li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>';
+                    }
+                    
+                    html += '</ul>';
+                    html += '<p class="text-center mt-2">Page ' + data.pagination.page + ' of ' + data.pagination.pages + ' (' + data.pagination.total + ' total images)</p>';
+                    html += '</nav>';
+                }
             } else {
-                document.getElementById('imageBrowserContent').innerHTML = '<p class="text-center">No images uploaded yet.</p>';
+                html = '<p class="text-center">No images uploaded yet.</p>';
             }
+            
+            document.getElementById('imageBrowserContent').innerHTML = html;
         })
         .catch(error => {
             document.getElementById('imageBrowserContent').innerHTML = '<p class="text-center text-danger">Failed to load images.</p>';

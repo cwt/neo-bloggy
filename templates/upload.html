@@ -28,7 +28,11 @@
 
             {% if uploaded_files %}
             <hr>
-            <h3>Your Recently Uploaded Images</h3>
+            {% if user and user.is_admin %}
+            <h3>All Uploaded Images (Admin View)</h3>
+            {% else %}
+            <h3>Your Uploaded Images</h3>
+            {% endif %}
             <div class="row">
                {% for file in uploaded_files %}
                <div class="col-md-4 mb-3">
@@ -37,6 +41,9 @@
                      <div class="card-body">
                         <p class="card-text">
                            <small class="text-muted">{{ file.display_name }}</small>
+                           {% if user and user.is_admin %}
+                           <br><small class="text-muted">Uploaded by: {{ file.user }}</small>
+                           {% endif %}
                         </p>
                         <input type="text" class="form-control form-control-sm"
                                value="{{ url_for('gridfs_file', file_id=file.file_id, _external=True) }}"
@@ -46,6 +53,49 @@
                </div>
                {% endfor %}
             </div>
+            
+            <!-- Pagination Controls -->
+            {% if total_files > per_page %}
+            <nav aria-label="Image pagination">
+               <ul class="pagination justify-content-center">
+                  <!-- Previous page -->
+                  {% if current_page > 1 %}
+                  <li class="page-item">
+                     <a class="page-link" href="{{ url_for('upload_image') }}?page={{ current_page - 1 }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo; Previous</span>
+                     </a>
+                  </li>
+                  {% else %}
+                  <li class="page-item disabled">
+                     <span class="page-link">&laquo; Previous</span>
+                  </li>
+                  {% endif %}
+                  
+                  <!-- Page numbers -->
+                  {% for page_num in range(max(1, current_page-2), min(total_pages+1, current_page+3)) %}
+                  <li class="page-item {% if page_num == current_page %}active{% endif %}">
+                     <a class="page-link" href="{{ url_for('upload_image') }}?page={{ page_num }}">{{ page_num }}</a>
+                  </li>
+                  {% endfor %}
+                  
+                  <!-- Next page -->
+                  {% if current_page < total_pages %}
+                  <li class="page-item">
+                     <a class="page-link" href="{{ url_for('upload_image') }}?page={{ current_page + 1 }}" aria-label="Next">
+                        <span aria-hidden="true">Next &raquo;</span>
+                     </a>
+                  </li>
+                  {% else %}
+                  <li class="page-item disabled">
+                     <span class="page-link">Next &raquo;</span>
+                  </li>
+                  {% endif %}
+               </ul>
+            </nav>
+            <p class="text-center mt-3">
+               Page {{ current_page }} of {{ total_pages }} ({{ total_files }} total images)
+            </p>
+            {% endif %}
             {% endif %}
          </div>
       </div>

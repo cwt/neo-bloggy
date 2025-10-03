@@ -722,26 +722,59 @@ def upload():
 
 @app.route("/api/images")
 def list_images():
-    """API endpoint to list uploaded images for the current user."""
+    """API endpoint to list uploaded images for the current user or all images for admin with pagination."""
     # Check if user is logged in
     if "user" not in session:
         return jsonify({"error": "You must be logged in to view images"}), 403
 
     try:
+        # Get current user to check admin status
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"error": "Authentication error"}), 403
+
         gfs = get_gridfs()
         if gfs is None:
             return jsonify({"error": "File storage system unavailable"}), 500
 
-        # Use GridFS to find files for the current user by querying metadata
-        # NeoSQLite GridFS doesn't support sort/limit in the query, so we handle it in Python
-        cursor = gfs.find({"metadata.user": session["user"]})
+        # Get pagination parameters
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 12, type=int)
+        # Limit per_page to prevent abuse
+        per_page = min(per_page, 50)
+
+        # Admins can see all images, regular users can only see their own
+        if current_user.get("is_admin", False):
+            # Find all files in GridFS (no user filter for admins)
+            cursor = gfs.find({})
+        else:
+            # Use GridFS to find files for the current user by querying metadata
+            # Use current_user["name"] for consistency with the user object
+            cursor = gfs.find({"metadata.user": current_user["name"]})
+
         files = list(cursor)
         # Sort by upload date in Python (newest first)
         files.sort(key=lambda x: x.upload_date, reverse=True)
 
+        # Additional security check: ensure non-admin users can only access their own files
+        # This is a defensive measure to prevent any potential bypass of the previous check
+        if not current_user.get("is_admin", False):
+            files = [
+                f
+                for f in files
+                if getattr(f, "metadata", {}).get("user")
+                == current_user["name"]
+            ]
+
+        # Calculate pagination
+        total = len(files)
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_files = files[start:end]
+
         # Create list of image data
         images = []
-        for file_doc in files:
+        for file_doc in paginated_files:
             file_id = file_doc._id
             filename = file_doc.filename
             file_length = file_doc.length
@@ -752,6 +785,7 @@ def list_images():
             # Extract original filename from metadata if available
             metadata = getattr(file_doc, "metadata", {})
             display_name = metadata.get("original_filename", filename)
+            file_user = metadata.get("user", "Unknown")
 
             images.append(
                 {
@@ -759,10 +793,23 @@ def list_images():
                     "url": file_url,
                     "size": file_length,
                     "modified": str(upload_date) if upload_date else None,
+                    "user": file_user,  # Include user info for admins
                 }
             )
 
-        return jsonify({"images": images})
+        # Return pagination info along with images
+        return jsonify(
+            {
+                "images": images,
+                "pagination": {
+                    "page": page,
+                    "per_page": per_page,
+                    "total": total,
+                    "pages": (total + per_page - 1)
+                    // per_page,  # Ceiling division
+                },
+            }
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -859,41 +906,80 @@ def upload_image(current_user):
 
         return redirect(url_for("upload_image"))
 
-    # GET request - show upload form and list of uploaded files for current user
+    # GET request - show upload form and list of uploaded files for current user or all files for admin
     try:
         gfs = get_gridfs()
         if gfs is None:
             formatted_files = []
+            total_files = 0
         else:
-            # Use GridFS to find files for the current user by querying metadata
-            # NeoSQLite GridFS doesn't support sort/limit in the query, so we handle it in Python
-            cursor = gfs.find({"metadata.user": current_user["name"]})
+            # Admins can see all images, regular users can only see their own
+            if current_user.get("is_admin", False):
+                # Find all files in GridFS (no user filter for admins)
+                cursor = gfs.find({})
+            else:
+                # Use GridFS to find files for the current user by querying metadata
+                cursor = gfs.find({"metadata.user": current_user["name"]})
+
             files = list(cursor)
-            # Sort by upload date in Python (newest first) and limit to 12
+            # Sort by upload date in Python (newest first)
             files.sort(key=lambda x: x.upload_date, reverse=True)
-            files = files[:12]  # Limit to last 12 files after sorting
+
+            # Additional security check: ensure non-admin users can only access their own files
+            # This is a defensive measure to prevent any potential bypass of the previous check
+            if not current_user.get("is_admin", False):
+                files = [
+                    f
+                    for f in files
+                    if getattr(f, "metadata", {}).get("user")
+                    == current_user["name"]
+                ]
+
+            total_files = len(files)
+
+            # Pagination: Get page number from request args, default to 1
+            page = request.args.get("page", 1, type=int)
+            per_page = 12  # Number of files per page
+            start_idx = (page - 1) * per_page
+            end_idx = start_idx + per_page
+            paginated_files = files[start_idx:end_idx]
 
             # Create display structure
             formatted_files = []
-            for file_doc in files:
+            for file_doc in paginated_files:
                 file_id = file_doc._id
                 filename = file_doc.filename
 
                 # Extract original filename from metadata if available
                 metadata = getattr(file_doc, "metadata", {})
                 display_name = metadata.get("original_filename", filename)
+                file_user = metadata.get("user", "Unknown")
 
                 formatted_files.append(
                     {
                         "file_id": file_id,
                         "full_name": filename,
                         "display_name": display_name,
+                        "user": file_user,  # Include user info for admins
                     }
                 )
     except Exception:
         formatted_files = []
+        total_files = 0
 
-    return render_template("upload.html", uploaded_files=formatted_files)
+    # Calculate pagination info
+    page = request.args.get("page", 1, type=int)
+    per_page = 12
+    total_pages = (total_files + per_page - 1) // per_page  # Ceiling division
+
+    return render_template(
+        "upload.html",
+        uploaded_files=formatted_files,
+        total_files=total_files,
+        current_page=page,
+        total_pages=total_pages,
+        per_page=per_page,
+    )
 
 
 # ---------------- #
@@ -902,10 +988,17 @@ def upload_image(current_user):
 
 
 # ----- HOME ----- #
+def get_publisher_users(db):
+    """Get list of publisher users from the database."""
+    return [user["name"] for user in db.users.find({"is_publisher": True})]
+
+
 @app.route("/")
 def get_all_posts():
     """
     Read all blog posts from the database.
+    Show all posts to logged-in users, only publisher posts to anonymous users.
+    Admins see all posts including from inactive users.
     """
     # Get current user with robust session checking
     current_user = get_current_user()
@@ -936,10 +1029,10 @@ def get_all_posts():
 
         # Generate new result and cache it
         db = get_db()
-        # Only show posts from active users
-        active_users = get_active_users(db)
+        # For anonymous users, only show posts from publisher users
+        publisher_users = get_publisher_users(db)
         posts = list(
-            db.blog_posts.find({"author": {"$in": active_users}}).sort(
+            db.blog_posts.find({"author": {"$in": publisher_users}}).sort(
                 "datetime", -1
             )
         )
@@ -953,13 +1046,19 @@ def get_all_posts():
         return response
     else:
         db = get_db()
-        # Only show posts from active users
-        active_users = get_active_users(db)
-        posts = list(
-            db.blog_posts.find({"author": {"$in": active_users}}).sort(
-                "datetime", -1
+        # For logged-in users, show posts from active users (regardless of publisher status)
+        # Admins see all posts including from inactive users, others see posts from active users only
+        if current_user.get("is_admin", False):
+            # Admins see all posts
+            posts = list(db.blog_posts.find().sort("datetime", -1))
+        else:
+            # Regular users see posts from active users only
+            active_users = get_active_users(db)
+            posts = list(
+                db.blog_posts.find({"author": {"$in": active_users}}).sort(
+                    "datetime", -1
+                )
             )
-        )
         response = make_response(
             render_template("index.html", all_posts=posts, user=current_user)
         )
@@ -1010,6 +1109,7 @@ def register():
                 ),
                 "is_admin": False,  # Default to non-admin
                 "is_active": True,  # Default to active
+                "is_publisher": False,  # Default to non-publisher
             }
             # insert new_user into the database
             insert_result = users.insert_one(new_user)
@@ -1233,6 +1333,9 @@ def show_post(post_id):
         form = CommentForm()
         db = get_db()
 
+        # Get current user with robust session checking
+        current_user = get_current_user()
+
         # For GET requests, we can use caching
         if request.method == "GET":
             requested_post, requested_post_comments = get_post_with_comments(
@@ -1252,11 +1355,31 @@ def show_post(post_id):
             flash("Post not found.")
             return redirect(url_for("get_all_posts"))
 
-        # Check if the post author is active
+        # Check if the post author is active (except for admins)
         post_author = db.users.find_one({"name": requested_post["author"]})
-        if not post_author or not post_author.get("is_active", True):
+        if not post_author:
             flash("The requested post is not available.")
             return redirect(url_for("get_all_posts"))
+
+        # Non-admin users cannot view posts from inactive users
+        if (
+            not current_user or not current_user.get("is_admin", False)
+        ) and not post_author.get("is_active", True):
+            flash("The requested post is not available.")
+            return redirect(url_for("get_all_posts"))
+
+        # For anonymous users or non-admin users, check if the post author is a publisher
+        # Non-publisher posts should only be visible to the author and admins
+        if (
+            not current_user or not current_user.get("is_admin", False)
+        ) and not post_author.get("is_publisher", False):
+            # Only the author of the post or admins can view non-publisher posts
+            if (
+                not current_user
+                or current_user["name"] != requested_post["author"]
+            ):
+                flash("The requested post is not available.")
+                return redirect(url_for("get_all_posts"))
 
         # Filter comments to only show those from active users
         active_users = get_active_users(db)
@@ -1294,11 +1417,15 @@ def show_post(post_id):
             flash("Comment added successfully!")
             return redirect(url_for("show_post", post_id=post_id))
 
+        # Get author information to check if author is a publisher
+        post_author_info = db.users.find_one({"name": requested_post["author"]})
+
         return render_template(
             "post.html",
             post=requested_post,
             comments=requested_post_comments,
             form=form,
+            post_author_info=post_author_info,
         )
     except Exception as e:
         flash(f"Error loading post: {str(e)}")
@@ -1558,7 +1685,8 @@ def delete_comment(current_user, comment_id):
 def search():
     """
     Search for a Post by Title, Subtitle, and Body Content.
-    Only show posts from active users.
+    Show posts to logged-in users, only publisher posts to anonymous users.
+    Admins can search all posts including from inactive users.
     """
     # Get current user with robust session checking
     current_user = get_current_user()
@@ -1571,25 +1699,37 @@ def search():
         flash("Invalid search query. Please use only text in search.")
         return redirect(url_for("get_all_posts"))
 
-    # Get active users
-    active_users = get_active_users(db)
+    # Get active users for regular users, publisher users for anonymous users
+    if current_user:
+        if current_user.get("is_admin", False):
+            # Admins can search all posts
+            relevant_users = []
+            search_filter_base = {}
+        else:
+            # Regular logged-in users can search posts from active users
+            active_users = get_active_users(db)
+            relevant_users = active_users
+            search_filter_base = {"author": {"$in": active_users}}
+    else:
+        # Anonymous users can only search posts from publisher users
+        publisher_users = get_publisher_users(db)
+        relevant_users = publisher_users
+        search_filter_base = {"author": {"$in": publisher_users}}
 
     # For neosqlite, we'll use the $text operator with FTS for efficient text search
     if query:
         try:
             # Use neosqlite's $text with $search for FTS-based search
             # This will search across all FTS-indexed fields (title, subtitle, and body)
-            # Only show posts from active users
-            posts = list(
-                db.blog_posts.find(
-                    {
-                        "$and": [
-                            {"$text": {"$search": query}},
-                            {"author": {"$in": active_users}},
-                        ]
-                    }
-                ).sort("datetime", -1)
+
+            # Add the author filter to the search filter
+            search_filter = (
+                {"$and": [{"$text": {"$search": query}}, search_filter_base]}
+                if relevant_users
+                else {"$text": {"$search": query}}
             )
+
+            posts = list(db.blog_posts.find(search_filter).sort("datetime", -1))
 
             # Add search relevance scoring
             # NeoSQLite provides a textScore metadata field when using $text search
@@ -1611,40 +1751,71 @@ def search():
             import re
 
             escaped_query = re.escape(query)
-            posts = list(
-                db.blog_posts.find(
-                    {
-                        "$and": [
-                            {
-                                "$or": [
-                                    {
-                                        "title": {
-                                            "$regex": escaped_query,
-                                            "$options": "i",
-                                        }
-                                    },
-                                    {
-                                        "subtitle": {
-                                            "$regex": escaped_query,
-                                            "$options": "i",
-                                        }
-                                    },
-                                    {
-                                        "body": {
-                                            "$regex": escaped_query,
-                                            "$options": "i",
-                                        }
-                                    },
-                                ]
-                            },
-                            {"author": {"$in": active_users}},
-                        ]
-                    }
-                ).sort("datetime", -1)
-            )
+
+            # Build the search filter based on user status
+            if relevant_users:
+                search_filter = {
+                    "$and": [
+                        {
+                            "$or": [
+                                {
+                                    "title": {
+                                        "$regex": escaped_query,
+                                        "$options": "i",
+                                    }
+                                },
+                                {
+                                    "subtitle": {
+                                        "$regex": escaped_query,
+                                        "$options": "i",
+                                    }
+                                },
+                                {
+                                    "body": {
+                                        "$regex": escaped_query,
+                                        "$options": "i",
+                                    }
+                                },
+                            ]
+                        },
+                        {"author": {"$in": relevant_users}},
+                    ]
+                }
+            else:
+                # For admins with no user filter
+                search_filter = {
+                    "$or": [
+                        {
+                            "title": {
+                                "$regex": escaped_query,
+                                "$options": "i",
+                            }
+                        },
+                        {
+                            "subtitle": {
+                                "$regex": escaped_query,
+                                "$options": "i",
+                            }
+                        },
+                        {
+                            "body": {
+                                "$regex": escaped_query,
+                                "$options": "i",
+                            }
+                        },
+                    ]
+                }
+
+            posts = list(db.blog_posts.find(search_filter).sort("datetime", -1))
     else:
-        # Only show posts from active users
-        posts = list(db.blog_posts.find({"author": {"$in": active_users}}))
+        # Show posts based on user status (active users for logged-in, publisher users for anonymous)
+        if relevant_users:
+            posts = list(
+                db.blog_posts.find({"author": {"$in": relevant_users}})
+            )
+        else:
+            # Admin viewing all posts
+            posts = list(db.blog_posts.find())
 
     response = make_response(
         render_template(
@@ -1885,6 +2056,57 @@ def make_admin(current_user, user_id):
     return redirect(url_for("admin_panel"))
 
 
+@app.route("/admin/toggle_publisher/<user_id>", methods=["POST"])
+@admin_required
+def toggle_publisher(current_user, user_id):
+    """
+    Toggle a user's publisher status.
+    """
+    db = get_db()
+    # Find the user to toggle
+    user_to_toggle = db.users.find_one({"_id": get_id_for_query(user_id)})
+
+    if not user_to_toggle:
+        flash("User not found.")
+        return redirect(url_for("admin_panel"))
+
+    # Toggle the user's publisher status
+    new_publisher_status = not user_to_toggle.get("is_publisher", False)
+    # Try to update with processed ID first
+    try:
+        db.users.update_one(
+            {"_id": get_id_for_query(user_id)},
+            {"$set": {"is_publisher": new_publisher_status}},
+        )
+    except Exception as e:
+        # If parameter binding fails, try with ObjectId directly
+        if "Error binding parameter" in str(e) and "ObjectId" in str(e):
+            import neosqlite
+
+            # Convert to ObjectId if it's a valid hex string
+            try:
+                object_id = neosqlite.objectid.ObjectId(user_id)
+                db.users.update_one(
+                    {"_id": object_id},
+                    {"$set": {"is_publisher": new_publisher_status}},
+                )
+            except Exception:
+                # If all else fails, re-raise the original error
+                raise e
+        else:
+            # Not the specific error we're handling, re-raise
+            raise e
+
+    status_text = "published" if new_publisher_status else "unpublished"
+    flash(f"User '{user_to_toggle['name']}' has been marked as {status_text}.")
+
+    # Clear cache since we've modified user status
+    if CACHE_ENABLED:
+        clear_cache()
+
+    return redirect(url_for("admin_panel"))
+
+
 @app.route("/admin/rebuild-search-indexes", methods=["POST"])
 @admin_required
 def rebuild_search_indexes(current_user):
@@ -1902,6 +2124,39 @@ def rebuild_search_indexes(current_user):
         flash(f"Failed to rebuild search indexes: {str(e)}")
 
     return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/unpublished-posts")
+@admin_required
+def unpublished_posts(current_user):
+    """
+    Admin view to see all unpublished posts.
+    Includes posts from non-publisher users, regardless of active status.
+    """
+    db = get_db()
+
+    # Get all users who are not publishers
+    non_publisher_users = [
+        user["name"] for user in db.users.find({"is_publisher": False})
+    ]
+
+    # Get all posts by non-publisher users
+    posts = list(
+        db.blog_posts.find({"author": {"$in": non_publisher_users}}).sort(
+            "datetime", -1
+        )
+    )
+
+    # Get user information for each post author
+    post_authors = {}
+    for post in posts:
+        if post["author"] not in post_authors:
+            author = db.users.find_one({"name": post["author"]})
+            post_authors[post["author"]] = author
+
+    return render_template(
+        "unpublished_posts.html", posts=posts, post_authors=post_authors
+    )
 
 
 # ----- SITEMAP ----- #

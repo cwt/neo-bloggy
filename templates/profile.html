@@ -8,6 +8,10 @@
          <p>Manage your posts and comments.</p>
          {% if user and user.is_admin %}
          <span class="badge bg-primary" style="position: absolute; top: 1rem; right: 1rem;">Administrator</span>
+         {% elif user and user.is_publisher %}
+         <span class="badge bg-success" style="position: absolute; top: 1rem; right: 1rem;">Publisher</span>
+         {% else %}
+         <span class="badge bg-secondary" style="position: absolute; top: 1rem; right: 1rem;">User</span>
          {% endif %}
          {% if user and not user.is_active %}
          <span class="badge bg-danger" style="position: absolute; top: 3rem; right: 1rem;">Account Disabled</span>

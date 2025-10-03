@@ -48,6 +48,8 @@
                   <td>
                      {% if user.is_admin %}
                      <span class="badge bg-primary">Admin</span>
+                     {% elif user.is_publisher %}
+                     <span class="badge bg-success">Publisher</span>
                      {% else %}
                      <span class="badge bg-secondary">User</span>
                      {% endif %}
@@ -65,6 +67,21 @@
                         <button type="button" class="btn btn-outline-success btn-sm"
                                 data-bs-toggle="modal" data-bs-target="#confirmEnableModal{{ user._id }}">
                            Enable
+                        </button>
+                        {% endif %}
+                     </form>
+
+                     <!-- Toggle Publisher Status Form -->
+                     <form method="POST" action="{{ url_for('toggle_publisher', user_id=user._id) }}" style="display: inline;">
+                        {% if user.is_publisher %}
+                        <button type="button" class="btn btn-outline-warning btn-sm"
+                                data-bs-toggle="modal" data-bs-target="#confirmUnpublishModal{{ user._id }}">
+                           Unpublish
+                        </button>
+                        {% else %}
+                        <button type="button" class="btn btn-outline-info btn-sm"
+                                data-bs-toggle="modal" data-bs-target="#confirmPublishModal{{ user._id }}">
+                           Publish
                         </button>
                         {% endif %}
                      </form>
@@ -119,6 +136,48 @@
                        </div>
                      </div>
 
+                     <!-- Toggle Publisher Status Confirmation Modal (Publish) -->
+                     <div class="modal fade" id="confirmPublishModal{{ user._id }}" tabindex="-1" aria-labelledby="confirmPublishModalLabel{{ user._id }}" aria-hidden="true">
+                       <div class="modal-dialog">
+                         <div class="modal-content">
+                           <div class="modal-header">
+                             <h5 class="modal-title" id="confirmPublishModalLabel{{ user._id }}">Confirm Publish User</h5>
+                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                           </div>
+                           <div class="modal-body">
+                             Are you sure you want to mark user <strong>{{ user.name }}</strong> as a publisher? Their posts will now appear on the homepage and search.
+                           </div>
+                           <div class="modal-footer">
+                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                             <form method="POST" action="{{ url_for('toggle_publisher', user_id=user._id) }}" style="display: inline;" id="publishForm_{{ user._id }}">
+                               <button type="submit" class="btn btn-info">Yes, Publish User</button>
+                             </form>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+
+                     <!-- Toggle Publisher Status Confirmation Modal (Unpublish) -->
+                     <div class="modal fade" id="confirmUnpublishModal{{ user._id }}" tabindex="-1" aria-labelledby="confirmUnpublishModalLabel{{ user._id }}" aria-hidden="true">
+                       <div class="modal-dialog">
+                         <div class="modal-content">
+                           <div class="modal-header">
+                             <h5 class="modal-title" id="confirmUnpublishModalLabel{{ user._id }}">Confirm Unpublish User</h5>
+                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                           </div>
+                           <div class="modal-body">
+                             Are you sure you want to mark user <strong>{{ user.name }}</strong> as unpublished? Their posts will no longer appear on the homepage and search.
+                           </div>
+                           <div class="modal-footer">
+                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                             <form method="POST" action="{{ url_for('toggle_publisher', user_id=user._id) }}" style="display: inline;" id="unpublishForm_{{ user._id }}">
+                               <button type="submit" class="btn btn-warning">Yes, Unpublish User</button>
+                             </form>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+
                      <!-- Make Admin Confirmation Modal -->
                      <div class="modal fade" id="confirmAdminModal{{ user._id }}" tabindex="-1" aria-labelledby="confirmAdminModalLabel{{ user._id }}" aria-hidden="true">
                        <div class="modal-dialog">
@@ -147,6 +206,15 @@
                {% endfor %}
             </tbody>
          </table>
+      </div>
+
+      <h2 class="your-posts-header">Content Management</h2>
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Unpublished Posts</h5>
+          <p class="card-text">View all posts from users who are not publishers.</p>
+          <a href="{{ url_for('unpublished_posts') }}" class="btn btn-info">View Unpublished Posts</a>
+        </div>
       </div>
 
       <h2 class="your-posts-header">System Maintenance</h2>

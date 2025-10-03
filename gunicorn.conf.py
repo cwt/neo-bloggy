@@ -4,14 +4,14 @@
 bind = "0.0.0.0:8000"
 backlog = 2048
 
-# Worker processes
-workers = 4
-worker_class = "sync"
+# Worker processes - only 2 workers with gevent for low memory and better I/O handling
+workers = 2
+worker_class = "gevent"
 worker_connections = 1000
 timeout = 120
-keepalive = 5
-max_requests = 1000
-max_requests_jitter = 100
+keepalive = 2
+max_requests = 500
+max_requests_jitter = 50
 preload_app = True
 
 # Security

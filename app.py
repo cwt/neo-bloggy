@@ -1362,21 +1362,18 @@ def show_post(post_id):
             return redirect(url_for("get_all_posts"))
 
         # Non-admin users cannot view posts from inactive users
-        if (
-            not current_user or not current_user.get("is_admin", False)
-        ) and not post_author.get("is_active", True):
+        is_admin = current_user and current_user.get("is_admin", False)
+        if not is_admin and not post_author.get("is_active", True):
             flash("The requested post is not available.")
             return redirect(url_for("get_all_posts"))
 
         # For anonymous users or non-admin users, check if the post author is a publisher
         # Non-publisher posts should only be visible to the author and admins
-        if (
-            not current_user or not current_user.get("is_admin", False)
-        ) and not post_author.get("is_publisher", False):
+        if not is_admin and not post_author.get("is_publisher", False):
             # Only the author of the post or admins can view non-publisher posts
             if (
                 not current_user
-                or current_user["name"] != requested_post["author"]
+                or current_user.get("name") != requested_post["author"]
             ):
                 flash("The requested post is not available.")
                 return redirect(url_for("get_all_posts"))
@@ -1479,6 +1476,7 @@ def edit_post(current_user, post_id):
 
     Update all Post data on submit.
     Prevent disabled users from editing posts.
+    Admins can edit any post.
     """
     try:
         db = get_db()
@@ -1488,9 +1486,17 @@ def edit_post(current_user, post_id):
             flash("Post not found.")
             return redirect(url_for("get_all_posts"))
 
-        # Check if user is the author of the post
-        if post["author"] != current_user["name"]:
+        # Check if user is the author of the post or an admin
+        is_admin = current_user.get("is_admin", False)
+        is_post_author = post["author"] == current_user["name"]
+
+        if not is_admin and not is_post_author:
             flash("You can only edit your own posts.")
+            return redirect(url_for("get_all_posts"))
+
+        # Prevent disabled non-admin users from editing posts
+        if not is_admin and not current_user.get("is_active", True):
+            flash("Your account has been disabled. You cannot edit posts.")
             return redirect(url_for("get_all_posts"))
 
         edit_form = CreatePostForm(
@@ -1568,6 +1574,7 @@ def delete_post(current_user, post_id):
 
     Redirect back to main page on submit.
     Prevent disabled users from deleting posts.
+    Admins can delete any post.
     """
     try:
         db = get_db()
@@ -1577,9 +1584,17 @@ def delete_post(current_user, post_id):
             flash("Post not found.")
             return redirect(url_for("get_all_posts"))
 
-        # Check if the current user is the author of the post
-        if post["author"] != current_user["name"]:
+        # Check if the current user is the author of the post or an admin
+        is_admin = current_user.get("is_admin", False)
+        is_post_author = post["author"] == current_user["name"]
+
+        if not is_admin and not is_post_author:
             flash("You can only delete your own posts.")
+            return redirect(url_for("get_all_posts"))
+
+        # Prevent disabled non-admin users from deleting posts
+        if not is_admin and not current_user.get("is_active", True):
+            flash("Your account has been disabled. You cannot delete posts.")
             return redirect(url_for("get_all_posts"))
 
         # Try to delete with processed ID first

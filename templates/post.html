@@ -23,7 +23,7 @@
          <div class="col-lg-8 col-md-10 mx-auto">
                            {{ post.body|markdown|safe }}
             <hr>
-            {% if session.user and session.user == post.author %}
+            {% if session.user and (session.user == post.author or user and user.is_admin) %}
             <div class="clearfix mb-5">
                <button type="button" class="btn btn-outline-danger float-end" data-bs-toggle="modal"
                   data-bs-target="#delete{{ post._id }}">
@@ -81,7 +81,7 @@
                         {{comment.text|markdown|safe}}
                         <div class="comment-meta">
                            <span class="date sub-text">Posted by {{comment.comment_author}} on {{comment | get_datetime | format_datetime}}</span>
-                           {% if session.user and session.user == comment.comment_author %}
+                           {% if session.user and (session.user == comment.comment_author or user and user.is_admin) %}
                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
                               data-bs-target="#deletecomment{{ comment._id }}">
                            Delete Comment

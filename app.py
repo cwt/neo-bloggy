@@ -1423,6 +1423,7 @@ def show_post(post_id):
             comments=requested_post_comments,
             form=form,
             post_author_info=post_author_info,
+            user=current_user,
         )
     except Exception as e:
         flash(f"Error loading post: {str(e)}")

@@ -348,19 +348,30 @@ def format_datetime_filter(datetime_str):
 
 
 def minify_html(html):
-    """Simple HTML minification to remove empty lines and whitespace-only lines while preserving content indentation."""
-    # Split into lines
-    lines = html.split("\n")
+    """Simple HTML minification: right-trim all lines and remove consecutive empty lines.
 
-    # Filter out empty lines and lines with only whitespace
-    filtered_lines = []
+    Preserves single empty lines that are important for markdown structure,
+    while removing excessive whitespace.
+    """
+    # Split into lines and right-trim whitespace
+    lines = [line.rstrip() for line in html.split("\n")]
+
+    # Remove consecutive empty lines, keeping only single empty lines
+    cleaned_lines = []
+    prev_was_empty = False
+
     for line in lines:
-        # If line has content (not just whitespace), keep it
-        if line.strip():
-            filtered_lines.append(line)
+        is_empty = line == ""
+
+        # If current line is empty and previous line was also empty, skip it
+        if is_empty and prev_was_empty:
+            continue
+
+        cleaned_lines.append(line)
+        prev_was_empty = is_empty
 
     # Join back with newlines
-    minified_html = "\n".join(filtered_lines)
+    minified_html = "\n".join(cleaned_lines)
 
     return minified_html
 
@@ -417,7 +428,7 @@ def after_request(response):
     if CACHE_ENABLED and int(time.time()) % 60 == 0:  # Roughly every minute
         clear_expired_cache()
 
-    # Minify HTML responses
+    # Minify HTML responses, but be careful not to break markdown-rendered content
     if response.content_type.startswith("text/html"):
         response.set_data(minify_html(response.get_data(as_text=True)))
     return response

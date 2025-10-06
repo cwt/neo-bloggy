@@ -13,6 +13,7 @@ from flask import (
     session,
     url_for,
 )
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_bootstrap import Bootstrap5
 from forms import (
     CommentForm,
@@ -63,10 +64,14 @@ CACHE_TIMEOUT = config.get("caching", {}).get(
 
 app = Flask(__name__)
 
+# Configure the app to trust proxy headers
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
 app.secret_key = SECRET_KEY
 # Configure session handling for better persistence
+# Set SESSION_COOKIE_SECURE to True when running behind HTTPS proxy
 app.config["SESSION_COOKIE_SECURE"] = (
-    False  # Set to True in production with HTTPS
+    True  # Should be True when behind HTTPS proxy
 )
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"

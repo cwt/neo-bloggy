@@ -365,6 +365,51 @@ def minify_html(html):
     return minified_html
 
 
+def get_file_extension_from_content_type(content_type):
+    """Get the appropriate file extension based on content type."""
+    extension_map = {
+        "image/webp": ".webp",
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/gif": ".gif",
+        "video/mp4": ".mp4",
+        "video/webm": ".webm",
+        "video/ogg": ".ogv",
+        "application/pdf": ".pdf",
+        "application/msword": ".doc",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+        "text/plain": ".txt",
+        "application/zip": ".zip",
+    }
+    return extension_map.get(content_type, "")
+
+
+def get_content_type_from_file_extension(filename):
+    """Get the content type based on file extension."""
+    import os
+
+    _, ext = os.path.splitext(filename.lower())
+    content_type_map = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+        ".mp4": "video/mp4",
+        ".webm": "video/webm",
+        ".ogv": "video/ogg",
+        ".pdf": "application/pdf",
+        ".doc": "application/msword",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".txt": "text/plain",
+        ".zip": "application/zip",
+    }
+    return content_type_map.get(
+        ext, "application/octet-stream"
+    )  # Default to binary
+
+
 @app.after_request
 def after_request(response):
     """Process HTML responses for minification and clean up expired cache."""
@@ -539,6 +584,10 @@ def inject_site_details():
 @app.route("/gridfs/<file_id>")
 def gridfs_file(file_id):
     """Serve files from GridFS with proper caching headers."""
+    # Remove any extension from file_id if present (e.g., .webp)
+    if "." in file_id:
+        file_id = file_id.rsplit(".", 1)[0]
+
     try:
         gfs = get_gridfs()
         if gfs is None:
@@ -576,7 +625,12 @@ def gridfs_file(file_id):
 
         # Get file metadata
         filename = grid_out.filename
-        content_type = "image/webp"  # We're always saving as WebP
+        # Determine content type based on the original file extension or default to WebP for images
+        content_type = (
+            grid_out.metadata.get("content_type", "image/webp")
+            if grid_out.metadata
+            else "image/webp"
+        )
         file_length = grid_out.length
         upload_date = grid_out.upload_date
 
@@ -699,11 +753,15 @@ def upload():
                     "user": session["user"],
                     "original_filename": filename,
                     "uploaded_at": time.time(),
+                    "content_type": "image/webp",  # All uploads are converted to WebP
                 },
             )
 
-            # Generate URL for the uploaded file
-            url = url_for("gridfs_file", file_id=file_id, _external=True)
+            # Generate URL for the uploaded file (with appropriate extension for social media compatibility)
+            content_type = "image/webp"  # All uploads are converted to WebP
+            url = url_for(
+                "gridfs_file", file_id=file_id, _external=True
+            ) + get_file_extension_from_content_type(content_type)
 
             # Return success response in format expected by markdown editor
             return jsonify({"data": {"filePath": url}})
@@ -780,7 +838,9 @@ def list_images():
             file_length = file_doc.length
             upload_date = file_doc.upload_date
 
-            file_url = url_for("gridfs_file", file_id=file_id, _external=True)
+            file_url = url_for(
+                "gridfs_file", file_id=file_id, _external=True
+            ) + get_file_extension_from_content_type("image/webp")
 
             # Extract original filename from metadata if available
             metadata = getattr(file_doc, "metadata", {})
@@ -889,13 +949,15 @@ def upload_image(current_user):
                         "user": current_user["name"],
                         "original_filename": filename,
                         "uploaded_at": time.time(),
+                        "content_type": "image/webp",  # All uploads are converted to WebP
                     },
                 )
 
                 flash("File uploaded successfully!")
                 # Use a special marker for the URL line so the template can handle it differently
+                content_type = "image/webp"  # All uploads are converted to WebP
                 flash(
-                    f"URL_LINE:{url_for('gridfs_file', file_id=file_id, _external=True)}"
+                    f"URL_LINE:{url_for('gridfs_file', file_id=file_id, _external=True)}{get_file_extension_from_content_type(content_type)}"
                 )
             except Exception as e:
                 flash(f"Upload failed: {str(e)}")

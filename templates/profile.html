@@ -3,7 +3,7 @@
 <main role="main">
    <div class="jumbotron profile-jumbotron">
       <div class="container" style="position: relative;">
-         <h1 class="display-2">{{ username.title() }}'s Profile</h1>
+         <h1 class="display-2 profile-name">{{ username.title() }}'s Profile</h1>
          <hr class="my-4">
          <p>Manage your posts and comments.</p>
          {% if user and user.is_admin %}

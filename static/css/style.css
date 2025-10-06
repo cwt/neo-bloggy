@@ -173,6 +173,16 @@ html {
      background: url("/static/img/webp/signup.webp") no-repeat center center;
      background-size: cover;
 }
+.profile-name {
+     word-wrap: break-word;
+     word-break: break-word;
+     overflow-wrap: break-word;
+}
+.profile-jumbotron .display-2 {
+     word-wrap: break-word;
+     word-break: break-word;
+     overflow-wrap: break-word;
+}
 /*------------------------------------*\ #FOOTER \*------------------------------------*/
  footer {
      padding: 50px 0 65px;
@@ -230,6 +240,9 @@ html {
      .profile-name {
          margin-top: 3rem;
          font-size: 1rem;
+         word-wrap: break-word;
+         word-break: break-word;
+         overflow-wrap: break-word;
     }
      .your-posts-header {
          font-size: 1.2rem;

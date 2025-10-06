@@ -595,7 +595,15 @@ def inject_site_details():
 @app.route("/gridfs/<file_id>")
 def gridfs_file(file_id):
     """Serve files from GridFS with proper caching headers."""
-    # Remove any extension from file_id if present (e.g., .webp)
+    # Check if the request is for a JPG conversion (e.g., file_id includes .jpg extension)
+    request_for_jpg = False
+    original_file_id = file_id
+
+    if file_id.endswith(".jpg"):
+        file_id = file_id[:-4]  # Remove '.jpg' from the end
+        request_for_jpg = True
+
+    # Remove any remaining extension (like .webp) from file_id if present
     if "." in file_id:
         file_id = file_id.rsplit(".", 1)[0]
 
@@ -637,7 +645,7 @@ def gridfs_file(file_id):
         # Get file metadata
         filename = grid_out.filename
         # Determine content type based on the original file extension or default to WebP for images
-        content_type = (
+        original_content_type = (
             grid_out.metadata.get("content_type", "image/webp")
             if grid_out.metadata
             else "image/webp"
@@ -649,35 +657,118 @@ def gridfs_file(file_id):
         import hashlib
 
         etag_base = f"{gridfs_id}_{upload_date if upload_date else gridfs_id}"
+        if request_for_jpg:
+            etag_base += "_jpg"  # Add suffix to differentiate between WebP and JPG versions
         etag = hashlib.md5(etag_base.encode()).hexdigest()
 
         # Check if client has cached version
         if request.headers.get("If-None-Match") == etag:
             return "", 304  # Not modified
 
-        # Create response with file data
-        response = make_response(grid_out.read())
-        response.headers["Content-Type"] = content_type
-        response.headers["Content-Disposition"] = f"inline; filename={filename}"
+        if request_for_jpg:
+            # Check file size to prevent memory issues with large files
+            # Limit to 20MB (adjust as needed)
+            max_file_size = 20 * 1024 * 1024  # 20MB
+            if file_length > max_file_size:
+                return "File too large for conversion", 413  # Payload too large
 
-        # Add caching headers
-        response.headers["Cache-Control"] = (
-            "public, max-age=31536000"  # Cache for 1 year
-        )
-        response.headers["ETag"] = etag
-        response.headers["Content-Length"] = str(file_length)
+            # Convert WebP to JPG
+            webp_data = grid_out.read()
 
-        # Add Last-Modified header if upload_date is available
-        if upload_date:
-            # Ensure upload_date is a datetime object
-            if hasattr(upload_date, "strftime"):
-                response.headers["Last-Modified"] = upload_date.strftime(
-                    "%a, %d %b %Y %H:%M:%S GMT"
+            # Validate that the original file is actually a WebP image
+            try:
+                # Check if the file appears to be WebP by checking magic bytes or trying to open as WebP
+                img = Image.open(io.BytesIO(webp_data))
+                if img.format != "WEBP":
+                    return "JPG conversion only available for WebP images", 400
+            except Exception:
+                return "JPG conversion only available for WebP images", 400
+
+            try:
+                image = Image.open(io.BytesIO(webp_data))
+
+                # Convert RGBA to RGB if necessary (JPG doesn't support transparency)
+                if image.mode in ("RGBA", "LA", "P"):
+                    # Create a white background for transparent images
+                    background = Image.new("RGB", image.size, (255, 255, 255))
+                    if image.mode == "P":
+                        # Convert palette mode to RGBA first, then composite
+                        image = image.convert("RGBA")
+                    if image.mode in ("RGBA", "LA"):
+                        # Composite the image onto the white background
+                        if image.mode == "RGBA":
+                            background.paste(image, mask=image.split()[-1])
+                        else:
+                            background.paste(image, mask=image.split()[-1])
+                    image = background
+                elif image.mode != "RGB":
+                    # Convert other modes (like L, CMYK, etc.) to RGB
+                    image = image.convert("RGB")
+
+                # Save as JPG to a BytesIO buffer
+                jpg_buffer = io.BytesIO()
+                image.save(jpg_buffer, "JPEG", quality=85)
+                jpg_buffer.seek(0)
+                jpg_data = jpg_buffer.getvalue()
+
+                # Generate response for JPG
+                response = make_response(jpg_data)
+                response.headers["Content-Type"] = "image/jpeg"
+                response.headers["Content-Disposition"] = (
+                    f"inline; filename={filename.rsplit('.', 1)[0] if '.' in filename else filename}.jpg"
                 )
-            else:
-                response.headers["Last-Modified"] = str(upload_date)
 
-        return response
+                # Add caching headers for all images (JPG and WebP both get 1 year cache)
+                response.headers["Cache-Control"] = (
+                    "public, max-age=31536000"  # Cache for 1 year
+                )
+                response.headers["ETag"] = etag
+                response.headers["Content-Length"] = str(len(jpg_data))
+
+                # Add Last-Modified header if upload_date is available
+                if upload_date:
+                    # Ensure upload_date is a datetime object
+                    if hasattr(upload_date, "strftime"):
+                        response.headers["Last-Modified"] = (
+                            upload_date.strftime("%a, %d %b %Y %H:%M:%S GMT")
+                        )
+                    else:
+                        response.headers["Last-Modified"] = str(upload_date)
+
+                return response
+            except Exception as e:
+                print(f"Error converting WebP to JPG: {e}")
+                import traceback
+
+                traceback.print_exc()
+                return "Error converting image", 500
+        else:
+            # Serve the original file (WebP)
+            # Create response with file data
+            response = make_response(grid_out.read())
+            response.headers["Content-Type"] = original_content_type
+            response.headers["Content-Disposition"] = (
+                f"inline; filename={filename}"
+            )
+
+            # Add caching headers for all images (JPG and WebP both get 1 year cache)
+            response.headers["Cache-Control"] = (
+                "public, max-age=31536000"  # Cache for 1 year
+            )
+            response.headers["ETag"] = etag
+            response.headers["Content-Length"] = str(file_length)
+
+            # Add Last-Modified header if upload_date is available
+            if upload_date:
+                # Ensure upload_date is a datetime object
+                if hasattr(upload_date, "strftime"):
+                    response.headers["Last-Modified"] = upload_date.strftime(
+                        "%a, %d %b %Y %H:%M:%S GMT"
+                    )
+                else:
+                    response.headers["Last-Modified"] = str(upload_date)
+
+            return response
     except neosqlite.gridfs.errors.NoFile:
         return "File not found", 404
     except Exception as e:

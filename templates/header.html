@@ -17,7 +17,7 @@
       <meta property="og:title" content="{{ post.title }}">
       <meta property="og:description" content="{{ post.subtitle or post.title[:160] }}">
       {% if post.img_url %}
-      <meta property="og:image" content="{{ post.img_url }}">
+      <meta property="og:image" content="{{ post.img_url.rsplit('.', 1)[0] + '.jpg' if post.img_url.endswith('.webp') else post.img_url }}">
       {% endif %}
 
       <!-- Twitter -->
@@ -26,7 +26,7 @@
       <meta property="twitter:title" content="{{ post.title }}">
       <meta property="twitter:description" content="{{ post.subtitle or post.title[:160] }}">
       {% if post.img_url %}
-      <meta property="twitter:image" content="{{ post.img_url }}">
+      <meta property="twitter:image" content="{{ post.img_url.rsplit('.', 1)[0] + '.jpg' if post.img_url.endswith('.webp') else post.img_url }}">
       {% endif %}
 
       <!-- Article schema -->
@@ -42,14 +42,14 @@
         "datePublished": "{{ post.datetime or post.date }}",
         "description": "{{ post.subtitle or post.title }}",
         {% if post.img_url %}
-        "image": "{{ post.img_url }}",
+        "image": "{{ post.img_url.rsplit('.', 1)[0] + '.jpg' if post.img_url.endswith('.webp') else post.img_url }}",
         {% endif %}
         "publisher": {
           "@type": "Organization",
           "name": "{{ site_title }}",
           "logo": {
             "@type": "ImageObject",
-            "url": "{{ url_for('static', filename='img/webp/logo.webp', _external=True) }}"
+            "url": "{{ url_for("static", filename="img/logo.png", _external=True) }}"
           }
         }
       }
@@ -67,14 +67,14 @@
       <meta property="og:url" content="{{ request.url }}">
       <meta property="og:title" content="{{ site_title }}">
       <meta property="og:description" content="{{ site_description }}">
-      <meta property="og:image" content="{{ url_for('static', filename='img/webp/logo.webp', _external=True) }}">
+      <meta property="og:image" content="{{ url_for('static', filename='img/logo.png', _external=True) }}">
 
       <!-- Twitter -->
       <meta property="twitter:card" content="summary_large_image">
       <meta property="twitter:url" content="{{ request.url }}">
       <meta property="twitter:title" content="{{ site_title }}">
       <meta property="twitter:description" content="{{ site_description }}">
-      <meta property="twitter:image" content="{{ url_for('static', filename='img/webp/logo.webp', _external=True) }}">
+      <meta property="twitter:image" content="{{ url_for('static', filename='img/logo.png', _external=True) }}">
 
       <title>{{ site_title }}</title>
       {% endif %}
@@ -105,7 +105,7 @@
       <header>
          <nav class="navbar navbar-expand-md navbar-light fixed-top bg-light">
             <div class="container">
-               <a class="navbar-brand" href="{{url_for('get_all_posts')}}"><img src="/static/img/webp/logo.webp" alt="{{ site_title }} Logo" height="48"></a>
+               <a class="navbar-brand" href="{{url_for('get_all_posts')}}"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="{{ site_title }} Logo" height="48"></a>
                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
                   <span class="navbar-toggler-icon"></span>
                </button>

@@ -2389,8 +2389,19 @@ def sitemap():
 # ----- ROBOTS.TXT ----- #
 @app.route("/robots.txt")
 def robots_txt():
-    """Serve the robots.txt file."""
-    return app.send_static_file("robots.txt")
+    """Generate a dynamic robots.txt file with absolute sitemap URL."""
+    # Get the base URL from the request
+    base_url = request.url_root
+
+    # Generate the absolute sitemap URL
+    sitemap_url = base_url + "sitemap.xml"
+
+    # Render the robots.txt template with the sitemap URL
+    return (
+        render_template("robots.txt", sitemap_url=sitemap_url),
+        200,
+        {"Content-Type": "text/plain"},
+    )
 
 
 # ----- HANDLE 404 ERROR ----- #

@@ -10,6 +10,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_from_directory,
     session,
     url_for,
 )
@@ -2383,6 +2384,17 @@ def sitemap():
         render_template("sitemap.xml", posts=posts, current_date=current_date),
         200,
         {"Content-Type": "application/xml"},
+    )
+
+
+# ----- FAVICON ----- #
+@app.route("/favicon.ico")
+def favicon():
+    """Serve the favicon.ico file."""
+    return send_from_directory(
+        os.path.join(app.root_path, "static", "img"),
+        "favicon.ico",
+        mimetype="image/vnd.microsoft.icon",
     )
 
 

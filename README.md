@@ -77,7 +77,7 @@ This project demonstrates several key advantages of [NeoSQLite](https://github.c
 1. **MongoDB-like API**: Familiar syntax for developers transitioning from MongoDB
 2. **Zero Configuration**: No external database servers required
 3. **Document Storage**: Native support for JSON-like documents
-4. **Query Operators**: Support for MongoDB-style query operators including `$or`, `$contains`, `$text`, etc.
+4. **Query Operators**: Support for MongoDB-style query operators including `$or`, `$elemMatch`, `$text`, etc.
 5. **Performance**: Faster local operations without network latency
 6. **Full-Text Search**: Advanced text search capabilities with support for custom FTS5 tokenizers (enabling Asian language search)
 7. **GridFS Support**: Built-in GridFS-like functionality for file storage
@@ -266,8 +266,18 @@ When running with Docker, you can customize the application behavior through env
 
 You can also create your own `config.toml` file and mount it as a volume to customize the application settings.
 
-## Original Project
+## Database Migrations
 
-This project was originally forked from [Medium Bloggy](https://github.com/leithdm/medium-bloggy), a project by [leithdm](https://github.com/leithdm). For information about the original project that used MongoDB, please see [ORIGINAL_README.md](ORIGINAL_README.md).
+This project includes several migration scripts to help manage database schema changes:
 
-The original project was transformed into Neo Bloggy as a standalone project with the ultimate objective to modernize in everything possible while using NeoSQLite as the only database backend.
+- `migrate_to_gridfs.py`: Migrates existing file uploads to GridFS storage
+- `migrate_to_objectid.py`: Migrates old integer IDs to MongoDB-style ObjectIds
+- `migrate_admin_publisher.py`: Ensures the first admin user also has publisher status
+
+These scripts should be run manually as needed when upgrading the application or when specific database changes are required. They can be run as standalone Python scripts:
+
+```bash
+python migrate_admin_publisher.py
+```
+
+When adding the new tag feature to existing installations, if you want to add the `tags` field to existing posts, you can run a simple update command in the application or manually update all existing posts with an empty tags array.

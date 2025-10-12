@@ -6,6 +6,16 @@
       <hr class="my-4">
       <p>{{ post.subtitle }}</p>
       <p><small>Posted by {{ post.author }} on {{ post | get_datetime | format_datetime }}</small></p>
+      {% if post.tags and post.tags|length > 0 %}
+      <div class="post-tags">
+         <small>
+            <strong>Tags:</strong>
+            {% for tag in post.tags %}
+            <a href="{{ url_for('posts_by_tag', tag=tag) }}" class="badge bg-secondary text-decoration-none me-1">{{ tag }}</a>
+            {% endfor %}
+         </small>
+      </div>
+      {% endif %}
       {% if user and user.is_admin and post_author_info and not post_author_info.is_publisher %}
       <p><small><span class="badge bg-warning">Unpublished Author</span> This post is not visible to regular users because the author is not a publisher.</small></p>
       {% endif %}

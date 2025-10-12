@@ -476,6 +476,8 @@ def get_db():
         finally:
             # Create datetime index on datetime
             g.db.blog_posts.create_index("datetime", datetime_field=True)
+            # Create index for tags field to support $elemMatch queries
+            g.db.blog_posts.create_index("tags")
             # Create datetime index on comments datetime
             g.db.blog_comments.create_index("datetime", datetime_field=True)
             # Create unique index for user names
@@ -603,7 +605,6 @@ def gridfs_file(file_id):
     """Serve files from GridFS with proper caching headers."""
     # Check if the request is for a JPG conversion (e.g., file_id includes .jpg extension)
     request_for_jpg = False
-    original_file_id = file_id
 
     if file_id.endswith(".jpg"):
         file_id = file_id[:-4]  # Remove '.jpg' from the end
@@ -1643,6 +1644,14 @@ def create_post(current_user):
     if form.validate_on_submit():
         try:
             db = get_db()
+            # Process tags: split by comma and clean up
+            tags = []
+            if form.tags.data:
+                tags = [
+                    tag.strip()
+                    for tag in form.tags.data.split(",")
+                    if tag.strip()
+                ]
             new_post = {
                 "title": form.title.data,
                 "subtitle": form.subtitle.data,
@@ -1650,6 +1659,7 @@ def create_post(current_user):
                 "img_url": form.img_url.data,
                 "author": current_user["name"],
                 "datetime": datetime.now().isoformat(),
+                "tags": tags,  # Add tags to the post
             }
             db.blog_posts.insert_one(new_post)
             flash("Post Successfully Added")
@@ -1704,8 +1714,19 @@ def edit_post(current_user, post_id):
             img_url=post["img_url"],
             author=current_user["name"],
             body=post["body"],
+            tags=", ".join(
+                post.get("tags", [])
+            ),  # Populate existing tags if they exist
         )
         if edit_form.validate_on_submit():
+            # Process tags: split by comma and clean up
+            tags = []
+            if edit_form.tags.data:
+                tags = [
+                    tag.strip()
+                    for tag in edit_form.tags.data.split(",")
+                    if tag.strip()
+                ]
             # Try to update with processed ID first
             try:
                 db.blog_posts.update_one(
@@ -1716,6 +1737,7 @@ def edit_post(current_user, post_id):
                             "subtitle": edit_form.subtitle.data,
                             "img_url": edit_form.img_url.data,
                             "body": edit_form.body.data,
+                            "tags": tags,  # Update tags as well
                         }
                     },
                 )
@@ -1892,6 +1914,73 @@ def delete_comment(current_user, comment_id):
         if cache_key in cache_storage:
             del cache_storage[cache_key]
     return redirect(url_for("show_post", post_id=post_id))
+
+
+# ----- DISPLAY POSTS BY TAG ----- #
+@app.route("/tag/<tag>")
+def posts_by_tag(tag):
+    """
+    Display all posts with a specific tag.
+    Using NeoSQLite $elemMatch operator to find tags in the array.
+    """
+    # Get current user with robust session checking
+    current_user = get_current_user()
+
+    db = get_db()
+
+    # Build the search filter based on user status
+    # Use $elemMatch to find if tag exists in the tags array
+    # $elemMatch was fixed in NeoSQLite v1.2.2 to work with simple arrays
+    tag_filter = {"tags": {"$elemMatch": tag}}
+
+    if current_user:
+        if current_user.get("is_admin", False):
+            # Admins can see all posts by tag
+            search_filter = tag_filter
+        else:
+            # Regular logged-in users can see posts from active users by tag
+            active_users = get_active_users(db)
+            search_filter = {
+                "$and": [tag_filter, {"author": {"$in": active_users}}]
+            }
+    else:
+        # Anonymous users can only see posts from publisher users
+        publisher_users = get_publisher_users(db)
+        search_filter = {
+            "$and": [tag_filter, {"author": {"$in": publisher_users}}]
+        }
+
+    # Find posts with the specified tag
+    posts = list(db.blog_posts.find(search_filter).sort("datetime", -1))
+
+    # Also get related tags for this tag to show related tags
+    # First find all unique tags used in posts with this tag
+    all_posts_with_tag = list(db.blog_posts.find(search_filter))
+    all_tags = set()
+    for post in all_posts_with_tag:
+        for post_tag in post.get("tags", []):
+            if (
+                post_tag and post_tag.lower() != tag.lower()
+            ):  # Exclude the current tag
+                all_tags.add(post_tag)
+
+    related_tags = sorted(list(all_tags))[:10]  # Limit to 10 related tags
+
+    response = make_response(
+        render_template(
+            "index.html",
+            all_posts=posts,
+            search_query=f"tag: {tag}",
+            user=current_user,
+            tag=tag,
+            related_tags=related_tags,
+        )
+    )
+    # Don't cache tag results as they may change frequently
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 # ----- SEARCH FOR A POST BY TITLE, SUBTITLE, BODY ----- #
@@ -2462,17 +2551,35 @@ def page_not_found_500(e):
     return render_template("500.html"), 500
 
 
+def ensure_tags_field_on_posts():
+    """
+    Ensure all existing posts have a tags field. Add an empty array if missing.
+    """
+    db = get_db()
+    # Find all posts that don't have a tags field and add an empty array
+    posts_without_tags = list(db.blog_posts.find({"tags": {"$exists": False}}))
+
+    updated_count = 0
+    for post in posts_without_tags:
+        try:
+            db.blog_posts.update_one(
+                {"_id": post["_id"]}, {"$set": {"tags": []}}
+            )
+            updated_count += 1
+        except Exception as e:
+            print(f"Error updating post {post['_id']}: {e}")
+
+    if updated_count > 0:
+        print(f"Updated {updated_count} posts to include empty tags array")
+    else:
+        print("All posts already have the tags field")
+
+
 if __name__ == "__main__":
     # Check if we're running in Docker by looking for the FLASK_RUN_HOST environment variable
     host = os.environ.get(
         "FLASK_RUN_HOST", config.get("app", {}).get("ip", "127.0.0.1")
     )
-    # Run migration to ensure first admin user is also publisher (for existing installations)
-    try:
-        ensure_first_admin_is_publisher()
-    except Exception as e:
-        print(f"Error running migration: {e}")
-
     app.run(
         host=host,
         port=int(config.get("app", {}).get("port", 5000)),

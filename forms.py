@@ -68,6 +68,7 @@ class CreatePostForm(FlaskForm):
     body = TextAreaField(
         "Content (Markdown supported)", validators=[DataRequired()]
     )
+    tags = StringField("Tags (comma-separated)", validators=[Optional()])
     submit = SubmitField("Publish")
 
 

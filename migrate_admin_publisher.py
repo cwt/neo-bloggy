@@ -4,7 +4,6 @@ Migration script to fix existing databases where first admin user is not a publi
 This script should be run once to ensure any existing first admin user also has publisher status.
 """
 import sys
-import os
 
 sys.path.insert(0, "/home/cwt/Projects/neo-bloggy")
 

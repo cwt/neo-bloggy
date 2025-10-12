@@ -1,5 +1,5 @@
 # Build stage
-FROM alpine:3.22.1 as builder
+FROM alpine:3.22.2 as builder
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -43,7 +43,7 @@ RUN mkdir -p /app/tokenizers && \
     chmod +r /app/tokenizers/*
 
 # Runtime stage
-FROM alpine:3.22.1
+FROM alpine:3.22.2
 
 # Set labels for image metadata
 LABEL maintainer="Neo Bloggy Team"

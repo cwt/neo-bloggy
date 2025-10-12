@@ -1289,7 +1289,8 @@ def register():
             admin_count = users.count_documents({"is_admin": True})
             if admin_count == 0:
                 users.update_one(
-                    {"_id": new_user_id}, {"$set": {"is_admin": True}}
+                    {"_id": new_user_id},
+                    {"$set": {"is_admin": True, "is_publisher": True}},
                 )
                 flash(
                     "You are the first user. You have been made an administrator."
@@ -1311,6 +1312,33 @@ def register():
                 flash(f"Registration failed: {str(e)}")
             return render_template("register.html", form=form)
     return render_template("register.html", form=form)
+
+
+def ensure_first_admin_is_publisher():
+    """
+    Function to ensure that if there's only one admin user in the system,
+    they also have publisher status (for existing installations that may have been affected
+    by the bug where first admin didn't get publisher status).
+    """
+    db = get_db()
+    # Get all admin users
+    admin_users = list(db.users.find({"is_admin": True}))
+
+    # If there's only one admin user, make sure they're also a publisher
+    if len(admin_users) == 1:
+        admin_user = admin_users[0]
+        if not admin_user.get("is_publisher", False):
+            # Update the admin user to also be a publisher
+            try:
+                db.users.update_one(
+                    {"_id": get_id_for_query(admin_user["_id"])},
+                    {"$set": {"is_publisher": True}},
+                )
+                print(
+                    f"Updated admin user '{admin_user['name']}' to also have publisher status."
+                )
+            except Exception as e:
+                print(f"Failed to update admin user to publisher: {e}")
 
 
 # ----- LOGIN ----- #
@@ -2439,6 +2467,12 @@ if __name__ == "__main__":
     host = os.environ.get(
         "FLASK_RUN_HOST", config.get("app", {}).get("ip", "127.0.0.1")
     )
+    # Run migration to ensure first admin user is also publisher (for existing installations)
+    try:
+        ensure_first_admin_is_publisher()
+    except Exception as e:
+        print(f"Error running migration: {e}")
+
     app.run(
         host=host,
         port=int(config.get("app", {}).get("port", 5000)),

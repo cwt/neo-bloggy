@@ -476,12 +476,24 @@ def get_db():
         finally:
             # Create datetime index on datetime
             g.db.blog_posts.create_index("datetime", datetime_field=True)
+            # Create index for author field (heavily used in queries)
+            g.db.blog_posts.create_index("author")
             # Create index for tags field to support $elemMatch queries
             g.db.blog_posts.create_index("tags")
             # Create datetime index on comments datetime
             g.db.blog_comments.create_index("datetime", datetime_field=True)
+            # Create index for parent_post field (heavily used for finding comments for a post)
+            g.db.blog_comments.create_index("parent_post")
+            # Create index for comment_author field (used for comment management)
+            g.db.blog_comments.create_index("comment_author")
             # Create unique index for user names
             g.db.users.create_index("name", unique=True)
+            # Create index for user email (used for authentication)
+            g.db.users.create_index("email")
+            # Create index for user status fields (used frequently in queries)
+            g.db.users.create_index("is_active")
+            g.db.users.create_index("is_admin")
+            g.db.users.create_index("is_publisher")
 
         # Initialize GridFS for file storage
         try:

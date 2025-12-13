@@ -1,5 +1,9 @@
 {% include "header.html" %}
 <!-- PAGE HEADER -->
+<!-- Hidden image to ensure high priority loading for jumbotron background -->
+{% if post.img_url %}
+<img src="{{ post.img_url }}" style="display:none;" fetchpriority="high" alt="" aria-hidden="true">
+{% endif %}
 <div class="jumbotron" style="background-image: url('{{ post.img_url }}'); background-size: cover;">
    <div class="container">
       <h1 class="display-2">{{ post.title }}</h1>

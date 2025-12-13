@@ -1,4 +1,6 @@
 {% include "header.html" %}
+<!-- Hidden image to ensure high priority loading for login jumbotron background -->
+<img src="{{ url_for('static', filename='img/webp/login.webp') }}" style="display:none;" fetchpriority="high" alt="" aria-hidden="true">
 <main role="main">
    <div class="jumbotron login-jumbotron">
       <div class="container">

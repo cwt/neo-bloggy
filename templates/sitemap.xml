@@ -7,17 +7,6 @@
         <priority>1.0</priority>
     </url>
 
-    <!-- Authentication pages -->
-    <url>
-        <loc>{{ url_for('login', _external=True) }}</loc>
-        <changefreq>yearly</changefreq>
-        <priority>0.5</priority>
-    </url>
-    <url>
-        <loc>{{ url_for('register', _external=True) }}</loc>
-        <changefreq>yearly</changefreq>
-        <priority>0.5</priority>
-    </url>
 
     <!-- Blog posts -->
     {% for post in posts %}

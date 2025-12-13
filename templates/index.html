@@ -2,14 +2,26 @@
 <main role="main">
    <div class="jumbotron main-jumbotron">
       <div class="container">
-         <h1 class="display-2">Where good ideas find you.</h1>
-         <hr class="my-4">
-         <p>Read and share new perspectives on any topic.</p>
-         {% if not session.user %}
-         <a class="nav-link" href="{{ url_for('register') }}">
-            <div class="btn btn-dark btn-sm rounded-pill">Get Started</div>
-         </a>
-         {% endif %}
+         <div class="row">
+            <div class="col-md-8">
+               <h1 class="display-2">Where good ideas find you.</h1>
+               <hr class="my-4">
+               <p>Read and share new perspectives on any topic.</p>
+               {% if not session.user %}
+               <a class="nav-link" href="{{ url_for('register') }}">
+                  <div class="btn btn-dark btn-sm rounded-pill">Get Started</div>
+               </a>
+               {% endif %}
+            </div>
+            <div class="col-md-4 d-flex align-items-center justify-content-center">
+               <!-- LCP optimization: Add a hero image with high fetchpriority -->
+               <img src="{{ url_for('static', filename='img/webp/hero-image.webp') }}"
+                    alt="Hero image"
+                    width="300" height="200"
+                    fetchpriority="high"
+                    style="object-fit: cover; border-radius: 8px;">
+            </div>
+         </div>
       </div>
    </div>
 

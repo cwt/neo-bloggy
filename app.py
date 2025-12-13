@@ -456,15 +456,15 @@ def after_request(response):
     # Add Content Security Policy with nonce
     csp_nonce = get_csp_nonce()
     csp_policy = (
-        f"default-src 'self' https:; "
-        f"script-src 'self' https: 'nonce-{csp_nonce}' 'unsafe-inline' 'unsafe-eval' 'unsafe-hashes'; "
-        f"script-src-attr 'self' 'unsafe-inline' 'unsafe-hashes'; "
-        f"style-src 'self' https: 'nonce-{csp_nonce}' 'unsafe-inline' 'unsafe-hashes'; "
-        f"style-src-attr 'self' 'unsafe-inline' 'unsafe-hashes'; "
-        f"font-src 'self' https:; "
-        f"img-src 'self' data: blob: https:; "
-        f"connect-src 'self' https:; "
-        f"frame-ancestors 'self'; "
+        f"default-src * data: blob:; "
+        f"script-src * data: blob: 'unsafe-inline' 'unsafe-eval' 'unsafe-hashes' 'nonce-{csp_nonce}'; "
+        f"script-src-attr * 'unsafe-inline' 'unsafe-hashes'; "
+        f"style-src * data: blob: 'unsafe-inline' 'unsafe-hashes' 'nonce-{csp_nonce}'; "
+        f"style-src-attr * 'unsafe-inline' 'unsafe-hashes'; "
+        f"font-src * data: blob:; "
+        f"img-src * data: blob:; "
+        f"connect-src * data: blob:; "
+        f"frame-ancestors *; "
         f"object-src 'none'; "
         f"base-uri 'self';"
     )

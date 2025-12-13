@@ -296,11 +296,49 @@ def after_request(response):
 4. **Cross-browser Testing**: Ensure the changes work across different browsers
 5. **Mobile Testing**: Test the responsive images and overall mobile experience
 
-## 6. Expected Outcomes
+## 6. Implementation Status Summary
 
-After implementing the completed changes, we expect:
-- **Performance score improvement**: Partial improvement made - addressing the most critical render-blocking resources issue which had an estimated 2,820ms savings. Complete implementation of all recommendations should bring the score from 63 to 80+
-- **Accessibility score improvement**: Partial improvement made - fixed unnamed links and heading hierarchy issues. Complete implementation should bring the score from 94 to 100
-- **Security improvements**: Completed - implemented CSP, HSTS, and other critical security headers
+After implementing the initial improvement changes, we observed the following results from the updated PageSpeed Insights report:
+- **Performance**: Increased from 63 to 84 (+21 points)
+- **Accessibility**: Increased from 94 to 98 (+4 points)
+- **Best Practices**: Decreased from 96 to 88 (-8 points)
+- **SEO**: Remained at 100 (no change)
+
+## 7. Regressions to Address
+
+After implementing the completed changes, we identified the following regressions that need to be fixed:
+
+#### 7.1 Content Security Policy Blocking Resources ⚠️
+**Issue**: The implemented CSP is blocking Font Awesome fonts and highlight.js resources
+- Font Awesome fonts (fa-brands-400, fa-regular-400, fa-solid-900, fa-v4compatibility) are being blocked
+- Highlight.js scripts and stylesheets are being blocked
+- Cloudflare analytics script is being blocked
+
+**Recommendations**:
+- Update CSP directives in `app.py` to allow these resources
+- Add CDN domains to appropriate CSP directives (cdnjs.cloudflare.com, use.fontawesome.com)
+
+**Files to modify**:
+- `app.py` (in `after_request` function)
+
+#### 7.2 Best Practices Score Decrease ⚠️
+**Issue**: Best Practices score decreased from 96 to 88 due to CSP warnings
+- Host allowlists can frequently be bypassed
+- `'unsafe-inline'` allows execution of unsafe in-page scripts
+- Consider using CSP nonces or hashes instead
+
+**Recommendations**:
+- Update CSP to use more specific directives
+- Consider implementing nonces or hashes instead of `'unsafe-inline'` for better security
+
+**Files to modify**:
+- `app.py` (in `after_request` function)
+
+## 8. Expected Outcomes
+
+After implementing the completed changes and addressing the regressions, we expect:
+- **Performance score improvement**: Significant improvement made - addressing the most critical render-blocking resources issue which had an estimated 2,820ms savings, reduced to 770ms. Performance score improved from 63 to 84
+- **Accessibility score improvement**: Improvement made - fixed unnamed links and heading hierarchy issues. Accessibility score improved from 94 to 98
+- **Security improvements**: Completed - implemented CSP, HSTS, and other critical security headers (with necessary adjustments to allow legitimate resources)
 - Better overall user experience with faster loading times
 - Improved SEO through better Core Web Vitals

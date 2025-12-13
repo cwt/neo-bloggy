@@ -456,13 +456,13 @@ def after_request(response):
     # Add Content Security Policy with nonce
     csp_nonce = get_csp_nonce()
     csp_policy = (
-        f"default-src 'self'; "
-        f"script-src 'self' 'nonce-{csp_nonce}' 'unsafe-inline' 'unsafe-eval' 'unsafe-hashes' https: cdn.jsdelivr.net use.fontawesome.com code.jquery.com https://*.cloudflare.com cdnjs.cloudflare.com; "
+        f"default-src 'self' https:; "
+        f"script-src 'self' https: 'nonce-{csp_nonce}' 'unsafe-inline' 'unsafe-eval' 'unsafe-hashes'; "
         f"script-src-attr 'self' 'unsafe-inline' 'unsafe-hashes'; "
-        f"style-src 'self' 'nonce-{csp_nonce}' 'unsafe-inline' 'unsafe-hashes' https: fonts.googleapis.com cdn.jsdelivr.net use.fontawesome.com cdnjs.cloudflare.com; "
+        f"style-src 'self' https: 'nonce-{csp_nonce}' 'unsafe-inline' 'unsafe-hashes'; "
         f"style-src-attr 'self' 'unsafe-inline' 'unsafe-hashes'; "
-        f"font-src 'self' https: fonts.gstatic.com fonts.googleapis.com cdn.jsdelivr.net https://*.fontawesome.com https://*.bootstrapcdn.com; "
-        f"img-src 'self' data: blob: https: cdn.jsdelivr.net https://*.cloudflare.com cdnjs.cloudflare.com; "
+        f"font-src 'self' https:; "
+        f"img-src 'self' data: blob: https:; "
         f"connect-src 'self' https:; "
         f"frame-ancestors 'self'; "
         f"object-src 'none'; "

@@ -434,6 +434,33 @@ def after_request(response):
     if CACHE_ENABLED and int(time.time()) % 60 == 0:  # Roughly every minute
         clear_expired_cache()
 
+    # Add security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"  # or "SAMEORIGIN" if needed
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # Add Content Security Policy
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net use.fontawesome.com code.jquery.com; "
+        "style-src 'self' 'unsafe-inline' fonts.googleapis.com cdn.jsdelivr.net use.fontawesome.com; "
+        "font-src 'self' fonts.gstatic.com fonts.googleapis.com cdn.jsdelivr.net; "
+        "img-src 'self' data: blob: cdn.jsdelivr.net; "
+        "connect-src 'self'; "
+        "frame-ancestors 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self';"
+    )
+
+    # Add HSTS header
+    response.headers["Strict-Transport-Security"] = (
+        "max-age=31536000; includeSubDomains; preload"
+    )
+
+    # Add Cross-Origin-Opener-Policy header
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+
     # Minify HTML responses, but be careful not to break markdown-rendered content
     if response.content_type.startswith("text/html"):
         response.set_data(minify_html(response.get_data(as_text=True)))

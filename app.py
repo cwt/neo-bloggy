@@ -453,24 +453,17 @@ def after_request(response):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
-    # Add Content Security Policy with nonce
-    csp_nonce = get_csp_nonce()
+    # Remove any previously set CSP headers to avoid conflicts
+    response.headers.pop("Content-Security-Policy", None)
+    response.headers.pop("Content-Security-Policy-Report-Only", None)
+
+    # Add Content Security Policy (most permissive for universal compatibility)
     csp_policy = (
-        f"default-src * data: blob:; "
-        f"script-src * data: blob: 'unsafe-inline' 'unsafe-eval' 'unsafe-hashes' 'nonce-{csp_nonce}'; "
-        f"script-src-attr * 'unsafe-inline' 'unsafe-hashes'; "
-        f"style-src * data: blob: 'unsafe-inline' 'unsafe-hashes' 'nonce-{csp_nonce}'; "
-        f"style-src-attr * 'unsafe-inline' 'unsafe-hashes'; "
-        f"font-src * data: blob:; "
-        f"img-src * data: blob:; "
-        f"connect-src * data: blob:; "
-        f"frame-ancestors *; "
-        f"object-src 'none'; "
-        f"base-uri 'self';"
+        "default-src *; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline'; "
+        "img-src * data: blob:; font-src * data:; connect-src *; frame-ancestors *; "
+        "object-src 'none'; base-uri 'self';"
     )
     response.headers["Content-Security-Policy"] = csp_policy
-    # Remove any report-only header that might interfere
-    response.headers.pop("Content-Security-Policy-Report-Only", None)
 
     # Add HSTS header
     response.headers["Strict-Transport-Security"] = (

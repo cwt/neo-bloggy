@@ -457,8 +457,10 @@ def after_request(response):
     csp_nonce = get_csp_nonce()
     response.headers["Content-Security-Policy"] = (
         f"default-src 'self'; "
-        f"script-src 'self' 'nonce-{csp_nonce}' 'unsafe-eval' 'unsafe-hashes' cdn.jsdelivr.net use.fontawesome.com code.jquery.com https://*.cloudflare.com cdnjs.cloudflare.com; "
-        f"style-src 'self' 'nonce-{csp_nonce}' 'unsafe-hashes' fonts.googleapis.com cdn.jsdelivr.net use.fontawesome.com cdnjs.cloudflare.com; "
+        f"script-src 'self' 'nonce-{csp_nonce}' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net use.fontawesome.com code.jquery.com https://*.cloudflare.com cdnjs.cloudflare.com; "
+        f"script-src-attr 'self' 'unsafe-inline'; "
+        f"style-src 'self' 'nonce-{csp_nonce}' 'unsafe-inline' fonts.googleapis.com cdn.jsdelivr.net use.fontawesome.com cdnjs.cloudflare.com; "
+        f"style-src-attr 'self' 'unsafe-inline'; "
         f"font-src 'self' fonts.gstatic.com fonts.googleapis.com cdn.jsdelivr.net https://*.fontawesome.com https://*.bootstrapcdn.com; "
         f"img-src 'self' data: blob: https: cdn.jsdelivr.net https://*.cloudflare.com cdnjs.cloudflare.com; "
         f"connect-src 'self'; "

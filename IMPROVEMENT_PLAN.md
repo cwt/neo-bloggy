@@ -323,18 +323,24 @@ After implementing the completed changes, we identified the following regression
 **Files modified**:
 - `app.py` (in `after_request` function)
 
-#### 7.2 Best Practices Score Decrease ⚠️
+#### 7.2 Best Practices Score Decrease ✅ FIXED
 **Issue**: Best Practices score decreased from 96 to 88 due to CSP warnings
 - Host allowlists can frequently be bypassed
 - `'unsafe-inline'` allows execution of unsafe in-page scripts
 - Consider using CSP nonces or hashes instead
 
-**Recommendations**:
-- Update CSP to use more specific directives
-- Consider implementing nonces or hashes instead of `'unsafe-inline'` for better security
+**Resolution**:
+- Replaced `'unsafe-inline'` with secure CSP nonces in `app.py`
+- Added nonce generation and injection functionality
+- Updated all relevant templates to use nonce attributes for inline scripts and styles
+- Enhanced security while maintaining functionality
 
-**Files to modify**:
-- `app.py` (in `after_request` function)
+**Files modified**:
+- `app.py` (added nonce functions, updated CSP header, updated context processor)
+- `templates/create_post.html` (added nonce to inline script and style tags)
+- `templates/post.html` (added nonce to inline script and style tags)
+- `templates/upload.html` (added nonce to inline script tag)
+- `templates/footer.html` (added nonce to inline script tag)
 
 ## 8. Expected Outcomes
 

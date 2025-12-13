@@ -106,7 +106,7 @@
 <hr>
 {% include "footer.html" %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // Add copy functionality for URL buttons
 document.addEventListener('DOMContentLoaded', function() {
     const copyButtons = document.querySelectorAll('.copy-url-btn');

@@ -14,6 +14,7 @@ from flask import (
     session,
     url_for,
 )
+import secrets
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_bootstrap import Bootstrap5
 from forms import (
@@ -195,6 +196,18 @@ def markdown_to_html(markdown_text):
 
 # Cache management
 cache_storage = {}
+
+
+def generate_nonce():
+    """Generate a unique nonce for CSP."""
+    return secrets.token_urlsafe(16)
+
+
+def get_csp_nonce():
+    """Get or create a CSP nonce for the current request."""
+    if not hasattr(g, "csp_nonce"):
+        g.csp_nonce = generate_nonce()
+    return g.csp_nonce
 
 
 def get_id_for_query(id_value):
@@ -440,17 +453,18 @@ def after_request(response):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
-    # Add Content Security Policy
+    # Add Content Security Policy with nonce
+    csp_nonce = get_csp_nonce()
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net use.fontawesome.com code.jquery.com https://*.cloudflare.com; "
-        "style-src 'self' 'unsafe-inline' fonts.googleapis.com cdn.jsdelivr.net use.fontawesome.com; "
-        "font-src 'self' fonts.gstatic.com fonts.googleapis.com cdn.jsdelivr.net https://*.fontawesome.com https://*.bootstrapcdn.com; "
-        "img-src 'self' data: blob: cdn.jsdelivr.net https://*.cloudflare.com; "
-        "connect-src 'self'; "
-        "frame-ancestors 'self'; "
-        "object-src 'none'; "
-        "base-uri 'self';"
+        f"default-src 'self'; "
+        f"script-src 'self' 'nonce-{csp_nonce}' 'unsafe-eval' cdn.jsdelivr.net use.fontawesome.com code.jquery.com https://*.cloudflare.com; "
+        f"style-src 'self' 'nonce-{csp_nonce}' fonts.googleapis.com cdn.jsdelivr.net use.fontawesome.com; "
+        f"font-src 'self' fonts.gstatic.com fonts.googleapis.com cdn.jsdelivr.net https://*.fontawesome.com https://*.bootstrapcdn.com; "
+        f"img-src 'self' data: blob: cdn.jsdelivr.net https://*.cloudflare.com; "
+        f"connect-src 'self'; "
+        f"frame-ancestors 'self'; "
+        f"object-src 'none'; "
+        f"base-uri 'self';"
     )
 
     # Add HSTS header
@@ -631,6 +645,7 @@ def inject_site_details():
             "site_description", "Blogging Ireland; journalism"
         ),
         "user": user,
+        "csp_nonce": get_csp_nonce(),
     }
 
 

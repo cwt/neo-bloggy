@@ -160,7 +160,7 @@
    </div>
 </div>
 
-<style>
+<style nonce="{{ csp_nonce }}">
 /* Fix for EasyMDE toolbar button sizing */
 .EasyMDEContainer .editor-toolbar button {
     width: auto !important;
@@ -168,7 +168,7 @@
 }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     // Editor namespace to avoid global pollution
     const editorNS = {
@@ -291,23 +291,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     `;
                 });
                 html += '</div>';
-                
+
                 // Add pagination controls
                 if (data.pagination && data.pagination.pages > 1) {
                     html += '<nav aria-label="Image pagination" class="mt-3">';
                     html += '<ul class="pagination justify-content-center">';
-                    
+
                     // Previous page
                     if (data.pagination.page > 1) {
                         html += `<li class="page-item"><a class="page-link" href="#" onclick="loadImagesAndShowModal(${data.pagination.page - 1}); return false;">&laquo; Previous</a></li>`;
                     } else {
                         html += '<li class="page-item disabled"><span class="page-link">&laquo; Previous</span></li>';
                     }
-                    
+
                     // Page numbers
                     const startPage = Math.max(1, data.pagination.page - 2);
                     const endPage = Math.min(data.pagination.pages, data.pagination.page + 2);
-                    
+
                     for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
                         if (pageNum === data.pagination.page) {
                             html += `<li class="page-item active"><span class="page-link">${pageNum}</span></li>`;
@@ -315,14 +315,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             html += `<li class="page-item"><a class="page-link" href="#" onclick="loadImagesAndShowModal(${pageNum}); return false;">${pageNum}</a></li>`;
                         }
                     }
-                    
+
                     // Next page
                     if (data.pagination.page < data.pagination.pages) {
                         html += `<li class="page-item"><a class="page-link" href="#" onclick="loadImagesAndShowModal(${data.pagination.page + 1}); return false;">Next &raquo;</a></li>`;
                     } else {
                         html += '<li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>';
                     }
-                    
+
                     html += '</ul>';
                     html += '<p class="text-center mt-2">Page ' + data.pagination.page + ' of ' + data.pagination.pages + ' (' + data.pagination.total + ' total images)</p>';
                     html += '</nav>';
@@ -330,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 html = '<p class="text-center">No images uploaded yet.</p>';
             }
-            
+
             document.getElementById('imageBrowserContent').innerHTML = html;
         })
         .catch(error => {

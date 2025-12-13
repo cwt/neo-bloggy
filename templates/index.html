@@ -41,7 +41,12 @@
             <div class="card mb-3">
                <div class="row no-gutters">
                   <div class="col-md-4">
+                     {% if loop.index0 == 0 %}
+                     <!-- First image should have high fetchpriority for LCP optimization -->
+                     <img src="{{ post.img_url }}" class="card-img" alt="{{ post.title }}" width="362" height="241" fetchpriority="high">
+                     {% else %}
                      <img src="{{ post.img_url }}" class="card-img" alt="{{ post.title }}" width="362" height="241" loading="lazy">
+                     {% endif %}
                   </div>
                   <div class="col-md-8">
                      <div class="card-body">

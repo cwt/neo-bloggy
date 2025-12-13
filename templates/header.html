@@ -108,6 +108,29 @@
       <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
       <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css"></noscript>
 
+      <!-- Preload jumbotron background images -->
+      {% if not post %}
+         <!-- Main jumbotron background image for index page -->
+         <link rel="preload" href="{{ url_for('static', filename='img/webp/background.webp') }}" as="image">
+         <!-- Preload other jumbotron images conditionally based on the page -->
+         {% if request.endpoint == 'login' %}
+         <link rel="preload" href="{{ url_for('static', filename='img/webp/login.webp') }}" as="image">
+         {% elif request.endpoint == 'register' %}
+         <link rel="preload" href="{{ url_for('static', filename='img/webp/signup.webp') }}" as="image">
+         {% elif request.endpoint == 'create_post' %}
+         <link rel="preload" href="{{ url_for('static', filename='img/webp/create.webp') }}" as="image">
+         {% elif request.endpoint == 'upload_image' %}
+         <link rel="preload" href="{{ url_for('static', filename='img/webp/upload.webp') }}" as="image">
+         {% elif request.endpoint == 'profile' or request.endpoint == 'admin_panel' or request.endpoint == 'unpublished_posts' or request.endpoint == 'edit_profile' %}
+         <link rel="preload" href="{{ url_for('static', filename='img/webp/signup.webp') }}" as="image">
+         {% endif %}
+      {% else %}
+         <!-- Post-specific jumbotron background image -->
+         {% if post.img_url %}
+         <link rel="preload" href="{{ post.img_url }}" as="image">
+         {% endif %}
+      {% endif %}
+
       <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
       <!-- Add font-display swap for Google Fonts -->

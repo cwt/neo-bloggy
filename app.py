@@ -443,10 +443,10 @@ def after_request(response):
     # Add Content Security Policy
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net use.fontawesome.com code.jquery.com; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net use.fontawesome.com code.jquery.com https://*.cloudflare.com; "
         "style-src 'self' 'unsafe-inline' fonts.googleapis.com cdn.jsdelivr.net use.fontawesome.com; "
-        "font-src 'self' fonts.gstatic.com fonts.googleapis.com cdn.jsdelivr.net; "
-        "img-src 'self' data: blob: cdn.jsdelivr.net; "
+        "font-src 'self' fonts.gstatic.com fonts.googleapis.com cdn.jsdelivr.net https://*.fontawesome.com https://*.bootstrapcdn.com; "
+        "img-src 'self' data: blob: cdn.jsdelivr.net https://*.cloudflare.com; "
         "connect-src 'self'; "
         "frame-ancestors 'self'; "
         "object-src 'none'; "

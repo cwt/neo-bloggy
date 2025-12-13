@@ -308,17 +308,19 @@ After implementing the initial improvement changes, we observed the following re
 
 After implementing the completed changes, we identified the following regressions that need to be fixed:
 
-#### 7.1 Content Security Policy Blocking Resources ⚠️
-**Issue**: The implemented CSP is blocking Font Awesome fonts and highlight.js resources
-- Font Awesome fonts (fa-brands-400, fa-regular-400, fa-solid-900, fa-v4compatibility) are being blocked
-- Highlight.js scripts and stylesheets are being blocked
-- Cloudflare analytics script is being blocked
+#### 7.1 Content Security Policy Blocking Resources ✅ FIXED
+**Issue**: The implemented CSP was blocking Font Awesome fonts and highlight.js resources
+- Font Awesome fonts (fa-brands-400, fa-regular-400, fa-solid-900, fa-v4compatibility) were being blocked
+- Highlight.js scripts and stylesheets were being blocked
+- Cloudflare analytics script was being blocked
 
-**Recommendations**:
-- Update CSP directives in `app.py` to allow these resources
-- Add CDN domains to appropriate CSP directives (cdnjs.cloudflare.com, use.fontawesome.com)
+**Resolution**:
+- Updated CSP directives in `app.py` to allow these resources
+- Added CDN domains to appropriate CSP directives (cdnjs.cloudflare.com, use.fontawesome.com, bootstrapcdn.com)
+- Enhanced font-src to include https://*.fontawesome.com and https://*.bootstrapcdn.com
+- Added https://*.cloudflare.com to script-src and img-src
 
-**Files to modify**:
+**Files modified**:
 - `app.py` (in `after_request` function)
 
 #### 7.2 Best Practices Score Decrease ⚠️

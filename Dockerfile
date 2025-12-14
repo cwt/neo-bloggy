@@ -3,8 +3,8 @@ FROM python:3.14-alpine as builder
 
 # Install build dependencies
 RUN apk update \
-    apk upgrade --no-cache \
-    apk add --no-cache \
+ && apk upgrade \
+ && apk add --no-cache \
     gcc \
     musl-dev \
     libffi-dev \
@@ -27,7 +27,7 @@ RUN apk update \
     libpng-dev
 
 # Clone fts5-icu-tokenizer repository
-RUN /usr/bin/git clone https://github.com/cwt/fts5-icu-tokenizer.git /tmp/fts5-icu-tokenizer
+RUN git clone https://github.com/cwt/fts5-icu-tokenizer.git /tmp/fts5-icu-tokenizer
 
 # Build fts5-icu-tokenizer
 RUN cd /tmp/fts5-icu-tokenizer && \
@@ -56,8 +56,8 @@ ENV FTS5_ICU_TOKENIZER_PATH=/app/tokenizers
 
 # Install runtime dependencies (only what's needed to run the application)
 RUN apk update \
-    apk upgrade --no-cache \
-    apk add --no-cache \
+ && apk upgrade --no-cache \
+ && apk add --no-cache \
     libffi \
     openssl \
     jpeg \

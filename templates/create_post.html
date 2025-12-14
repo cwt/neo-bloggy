@@ -2,6 +2,10 @@
 
 <!-- Hidden image to ensure high priority loading for write jumbotron background -->
 <img src="{{ url_for('static', filename='img/webp/create.webp') }}" style="display:none;" fetchpriority="high" alt="" aria-hidden="true">
+
+<!-- Load EasyMDE resources only when needed -->
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css"></noscript>
 <main role="main">
    <div class="jumbotron write-jumbotron">
       <div class="container">
@@ -408,4 +412,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <br>
 <hr>
+
+<!-- Load EasyMDE JS only when needed -->
+<script src="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.js" defer></script>
 {% include "footer.html" %}

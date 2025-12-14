@@ -4,6 +4,12 @@
 {% if post.img_url %}
 <img src="{{ post.img_url }}" style="display:none;" fetchpriority="high" alt="" aria-hidden="true">
 {% endif %}
+
+<!-- Load EasyMDE resources only when needed -->
+{% if session.user %}
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css"></noscript>
+{% endif %}
 <div class="jumbotron" style="background-image: url('{{ post.img_url }}'); background-size: cover;">
    <div class="container">
       <h1 class="display-2">{{ post.title }}</h1>
@@ -404,4 +410,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <br>
 <hr>
+
+<!-- Load EasyMDE JS only when needed -->
+{% if session.user %}
+<script src="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.js" defer></script>
+{% endif %}
 {% include "footer.html" with context %}

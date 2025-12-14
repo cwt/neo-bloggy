@@ -2,7 +2,9 @@
 FROM python:3.14-alpine as builder
 
 # Install build dependencies
-RUN apk add --no-cache \
+RUN apk update \
+    apk upgrade --no-cache \
+    apk add --no-cache \
     gcc \
     musl-dev \
     libffi-dev \
@@ -53,7 +55,9 @@ ENV NEO_BLOGGY_CONFIG_PATH=/data/config.toml
 ENV FTS5_ICU_TOKENIZER_PATH=/app/tokenizers
 
 # Install runtime dependencies (only what's needed to run the application)
-RUN apk add --no-cache \
+RUN apk update \
+    apk upgrade --no-cache \
+    apk add --no-cache \
     libffi \
     openssl \
     jpeg \

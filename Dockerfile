@@ -27,7 +27,7 @@ RUN apk update \
     libpng-dev
 
 # Clone fts5-icu-tokenizer repository
-RUN git clone https://github.com/cwt/fts5-icu-tokenizer.git /tmp/fts5-icu-tokenizer
+RUN /usr/bin/git clone https://github.com/cwt/fts5-icu-tokenizer.git /tmp/fts5-icu-tokenizer
 
 # Build fts5-icu-tokenizer
 RUN cd /tmp/fts5-icu-tokenizer && \

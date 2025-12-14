@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.14-alpine as builder
+FROM quay.io/cwt/python:3.14-optimized-alpine as builder
 
 # Install build dependencies
 RUN apk update \
@@ -42,7 +42,7 @@ RUN mkdir -p /app/tokenizers && \
     chmod +r /app/tokenizers/*
 
 # Runtime stage
-FROM python:3.14-alpine
+FROM quay.io/cwt/python:3.14-optimized-alpine
 
 # Set labels for image metadata
 LABEL maintainer="Neo Bloggy Team"

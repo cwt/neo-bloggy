@@ -126,7 +126,15 @@ This application includes several modern web development features:
 - Improved code structure and maintainability
 - Enhanced security with input validation and XSS protection
 
-### Caching
+### Security and Performance Features
+This application includes several security and performance features:
+
+#### Content Security Policy (CSP)
+- **Permissive by Design**: The application uses a permissive CSP policy ("default-src *") for maximum compatibility across different deployment environments
+- **Flexible Security**: This approach allows the application to work in various environments while enabling administrators to implement more restrictive CSP policies via web servers (nginx, Apache) or CDNs as needed
+- **Nonce Implementation**: All inline scripts and styles use CSP nonces for additional security
+
+#### Caching
 Optional caching mechanism to improve performance:
 - **Configurable**: Enable/disable caching and set timeout via configuration file
 - **Automatic Invalidation**: Cache is automatically cleared when content is modified

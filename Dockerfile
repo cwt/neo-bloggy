@@ -1,11 +1,8 @@
 # Build stage
-FROM alpine:3.22.2 as builder
+FROM python:3.14-alpine as builder
 
 # Install build dependencies
 RUN apk add --no-cache \
-    python3 \
-    py3-pip \
-    python3-dev \
     gcc \
     musl-dev \
     libffi-dev \
@@ -43,7 +40,7 @@ RUN mkdir -p /app/tokenizers && \
     chmod +r /app/tokenizers/*
 
 # Runtime stage
-FROM alpine:3.22.2
+FROM python:3.14-alpine
 
 # Set labels for image metadata
 LABEL maintainer="Neo Bloggy Team"
@@ -57,8 +54,6 @@ ENV FTS5_ICU_TOKENIZER_PATH=/app/tokenizers
 
 # Install runtime dependencies (only what's needed to run the application)
 RUN apk add --no-cache \
-    python3 \
-    py3-pip \
     libffi \
     openssl \
     jpeg \

@@ -366,6 +366,53 @@ pre {
 }
 
 /*------------------------------------*\
+ #SEARCH ICON BUTTONS
+\*------------------------------------*/
+
+/* Ensure perfect height alignment between search input and buttons */
+.input-group .form-control {
+    height: calc(2.25rem + 2px); /* Match the button height exactly */
+    padding: 0.375rem 0.75rem; /* Standard Bootstrap form control padding */
+    font-size: 1rem; /* Match button font size */
+    display: flex;
+    align-items: center;
+}
+
+/* Remove the default focus outline to avoid focus effects */
+.search-icon-btn:focus,
+.input-group .form-control:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.search-icon-btn {
+    width: calc(2.25rem + 2px); /* Match Bootstrap's default input height */
+    height: calc(2.25rem + 2px); /* Same as width for perfect square */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+    font-size: 1rem;
+    border: 1px solid #ced4da; /* Add border to match Bootstrap inputs */
+}
+
+/* Remove the default button focus outline to avoid double focus effects */
+.search-icon-btn:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* Responsive adjustments for mobile */
+@media screen and (max-width: 768px) {
+    .search-icon-btn {
+        width: calc(2rem + 2px);
+        height: calc(2rem + 2px);
+        font-size: 0.875rem;
+    }
+}
+
+/*------------------------------------*\
  #SCROLLBAR CONSISTENCY
 \*------------------------------------*/
 

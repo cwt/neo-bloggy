@@ -177,9 +177,11 @@
                   <ul class="navbar-nav ms-auto align-items-center">
                      <li class="nav-item">
                         <form class="d-flex" role="search" action="{{ url_for('search') }}" method="POST">
-                           <input class="form-control me-2" type="search" name="query" placeholder="Search all posts..." value="{{ search_query or '' }}" aria-label="Search">
-                           <button class="btn btn-dark" type="submit">Search</button>
-                           <a class="btn btn-outline-info ms-2" href="{{ url_for('get_all_posts') }}" role="button">Reset</a>
+                           <div class="input-group">
+                              <input class="form-control" type="search" name="query" placeholder="Search all posts..." value="{{ search_query or '' }}" aria-label="Search">
+                              <button class="btn btn-outline-info search-icon-btn" type="submit" aria-label="Search">🔍</button>
+                              <a class="btn btn-outline-info search-icon-btn" href="{{ url_for('get_all_posts') }}" role="button" aria-label="Reset">✕</a>
+                           </div>
                         </form>
                      </li>
                      {% if not session.user %}

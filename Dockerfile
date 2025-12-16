@@ -1,30 +1,31 @@
 # Build stage
-FROM quay.io/cwt/python:3.14-optimized-alpine as builder
+FROM quay.io/cwt/python:3.14.2-optimized-alma as builder
 
 # Install build dependencies
-RUN apk update \
- && apk upgrade \
- && apk add --no-cache \
+RUN dnf update -y \
+ && dnf upgrade -y \
+ && dnf install -y \
     gcc \
-    musl-dev \
-    libffi-dev \
-    openssl-dev \
-    jpeg-dev \
-    zlib-dev \
-    freetype-dev \
-    lcms2-dev \
-    openjpeg-dev \
-    tiff-dev \
-    tk-dev \
-    tcl-dev \
+    gcc-c++ \
+    glibc-devel \
+    libffi-devel \
+    openssl-devel \
+    libjpeg-devel \
+    zlib-devel \
+    freetype-devel \
+    lcms2-devel \
+    openjpeg2-devel \
+    libtiff-devel \
+    tk-devel \
+    tcl-devel \
     cmake \
     make \
-    sqlite-dev \
-    icu-dev \
+    sqlite-devel \
+    libicu-devel \
     git \
     bash \
-    libwebp-dev \
-    libpng-dev
+    libwebp-devel \
+    libpng-devel
 
 # Clone fts5-icu-tokenizer repository
 RUN git clone https://github.com/cwt/fts5-icu-tokenizer.git /tmp/fts5-icu-tokenizer
@@ -32,7 +33,7 @@ RUN git clone https://github.com/cwt/fts5-icu-tokenizer.git /tmp/fts5-icu-tokeni
 # Build fts5-icu-tokenizer
 RUN cd /tmp/fts5-icu-tokenizer && \
     chmod +x scripts/build_all.sh && \
-    bash scripts/build_all.sh
+    bash scripts/build_all_legacy.sh
 
 # Create app directory and copy built tokenizer libraries
 RUN mkdir -p /app/tokenizers && \
@@ -42,7 +43,7 @@ RUN mkdir -p /app/tokenizers && \
     chmod +r /app/tokenizers/*
 
 # Runtime stage
-FROM quay.io/cwt/python:3.14-optimized-alpine
+FROM quay.io/cwt/python:3.14.2-optimized-alma
 
 # Set labels for image metadata
 LABEL maintainer="Neo Bloggy Team"
@@ -55,25 +56,24 @@ ENV NEO_BLOGGY_CONFIG_PATH=/data/config.toml
 ENV FTS5_ICU_TOKENIZER_PATH=/app/tokenizers
 
 # Install runtime dependencies (only what's needed to run the application)
-RUN apk update \
- && apk upgrade --no-cache \
- && apk add --no-cache \
+RUN dnf update -y \
+ && dnf upgrade -y \
+ && dnf install -y \
     libffi \
     openssl \
-    jpeg \
+    libjpeg \
     zlib \
     freetype \
     lcms2 \
-    openjpeg \
-    tiff \
+    openjpeg2 \
+    libtiff \
     tk \
     tcl \
     sqlite-libs \
-    icu-libs \
-    icu-data-full \
-    bash \
+    libicu \
     libwebp \
-    libpng
+    libpng \
+ && dnf clean all
 
 # Create app directory
 WORKDIR /app
@@ -95,7 +95,7 @@ COPY --from=builder /app/tokenizers /app/tokenizers
 VOLUME /data
 
 # Create a non-root user for security
-RUN adduser -D -s /bin/sh -u 1000 appuser
+RUN useradd -r -s /bin/sh -u 1000 appuser
 RUN chown -R appuser:appuser /app /data
 RUN chmod -R 755 /app/tokenizers
 USER appuser

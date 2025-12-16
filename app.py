@@ -1,5 +1,16 @@
 from PIL import Image
 from bleach.css_sanitizer import CSSSanitizer
+
+# Import cache functionality from separate module
+from cache import (
+    FileCache,
+    cached_result as cached_result_internal,
+    clear_cache as clear_cache_internal,
+    clear_expired_cache as clear_expired_cache_internal,
+    delete_cache_key,
+    get_cache_instance,
+    get_cache_key,
+)
 from datetime import datetime
 from flask import (
     Flask,
@@ -14,8 +25,6 @@ from flask import (
     session,
     url_for,
 )
-import secrets
-from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_bootstrap import Bootstrap5
 from forms import (
     CommentForm,
@@ -26,6 +35,8 @@ from forms import (
     RegisterForm,
 )
 from functools import wraps
+from neosqlite import gridfs
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 import bleach
@@ -34,8 +45,10 @@ import markdown
 import neosqlite
 import os
 import re
+import secrets
 import time
 import tomllib
+import traceback
 import uuid
 
 # Configuration flags
@@ -64,10 +77,14 @@ CACHE_TIMEOUT = config.get("caching", {}).get(
     "cache_timeout", 300
 )  # Default 5 minutes
 
+# Posts configuration
+POSTS_PER_PAGE = config.get("posts", {}).get("posts_per_page", 10)
+MAX_POSTS_PER_PAGE = config.get("posts", {}).get("max_posts_per_page", 50)
+
 app = Flask(__name__)
 
 # Configure the app to trust proxy headers
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)  # type: ignore
 
 app.secret_key = SECRET_KEY
 # Configure session handling for better persistence
@@ -194,8 +211,8 @@ def markdown_to_html(markdown_text):
     )
 
 
-# Cache management
-cache_storage = {}
+# Initialize cache based on configuration
+cache_storage = get_cache_instance(config, cache_timeout=CACHE_TIMEOUT)
 
 
 def generate_nonce():
@@ -227,8 +244,6 @@ def get_id_for_query(id_value):
         # If it's not an integer, it might already be an ObjectId hex string
         # Return string representation for parameter binding compatibility
         try:
-            import neosqlite
-
             # Try to create an ObjectId from the value to validate it
             object_id = neosqlite.objectid.ObjectId(id_value)
             # Return string representation for broader compatibility
@@ -236,11 +251,6 @@ def get_id_for_query(id_value):
         except Exception:
             # If all attempts fail, return the original value
             return id_value
-
-
-def get_cache_key(*args, **kwargs):
-    """Generate a cache key from arguments."""
-    return str(args) + str(sorted(kwargs.items()))
 
 
 def get_active_users(db):
@@ -258,45 +268,23 @@ def filter_active_user_content(
 def cached_result(func):
     """Decorator to cache function results with timeout."""
 
-    def wrapper(*args, **kwargs):
-        if not CACHE_ENABLED:
-            return func(*args, **kwargs)
-
-        cache_key = get_cache_key(func.__name__, *args, **kwargs)
-        current_time = time.time()
-
-        # Check if we have a cached result that hasn't expired
-        if cache_key in cache_storage:
-            result, timestamp = cache_storage[cache_key]
-            if current_time - timestamp < CACHE_TIMEOUT:
-                return result
-
-        # Generate new result and cache it
-        result = func(*args, **kwargs)
-        cache_storage[cache_key] = (result, current_time)
-        return result
-
-    return wrapper
+    return cached_result_internal(cache_storage, cache_timeout=CACHE_TIMEOUT)(
+        func
+    )
 
 
 def clear_expired_cache():
     """Remove expired cache entries."""
+
     if not CACHE_ENABLED:
         return
-
-    current_time = time.time()
-    expired_keys = [
-        key
-        for key, (_, timestamp) in cache_storage.items()
-        if current_time - timestamp >= CACHE_TIMEOUT
-    ]
-    for key in expired_keys:
-        del cache_storage[key]
+    clear_expired_cache_internal(cache_storage, cache_timeout=CACHE_TIMEOUT)
 
 
 def clear_cache():
     """Clear all cache entries."""
-    cache_storage.clear()
+
+    clear_cache_internal(cache_storage)
 
 
 # Add a filter to get datetime field from an object (fallback to date if needed)
@@ -408,7 +396,9 @@ def get_file_extension_from_content_type(content_type):
         "video/ogg": ".ogv",
         "application/pdf": ".pdf",
         "application/msword": ".doc",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": (
+            ".docx"
+        ),
         "text/plain": ".txt",
         "application/zip": ".zip",
     }
@@ -417,8 +407,6 @@ def get_file_extension_from_content_type(content_type):
 
 def get_content_type_from_file_extension(filename):
     """Get the content type based on file extension."""
-    import os
-
     _, ext = os.path.splitext(filename.lower())
     content_type_map = {
         ".jpg": "image/jpeg",
@@ -431,7 +419,9 @@ def get_content_type_from_file_extension(filename):
         ".ogv": "video/ogg",
         ".pdf": "application/pdf",
         ".doc": "application/msword",
-        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".docx": (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ),
         ".txt": "text/plain",
         ".zip": "application/zip",
     }
@@ -536,7 +526,7 @@ def get_db():
 
         # Initialize GridFS for file storage
         try:
-            g.gfs = neosqlite.gridfs.GridFSBucket(g.db.db)
+            g.gfs = gridfs.GridFSBucket(g.db.db)
         except Exception as e:
             print(f"Warning: Failed to initialize GridFS: {e}")
             g.gfs = None
@@ -551,7 +541,7 @@ def get_gridfs():
         if "gfs" not in g:
             # If gfs wasn't initialized in get_db, try to initialize it now
             try:
-                g.gfs = neosqlite.gridfs.GridFSBucket(g.db.db)
+                g.gfs = gridfs.GridFSBucket(g.db.db)
             except Exception as e:
                 print(f"Warning: Failed to initialize GridFS: {e}")
                 g.gfs = None
@@ -639,8 +629,10 @@ def inject_site_details():
     return {
         "site_title": config.get("app", {}).get("site_title", "Neo Bloggy"),
         "site_author": config.get("app", {}).get("site_author", "Neo Bloggy"),
-        "site_description": config.get("app", {}).get(
-            "site_description", "Blogging Ireland; journalism"
+        "site_description": (
+            config.get("app", {}).get(
+                "site_description", "Blogging Ireland; journalism"
+            )
         ),
         "user": user,
         "csp_nonce": get_csp_nonce(),
@@ -679,8 +671,6 @@ def gridfs_file(file_id):
         # So let's ensure it's properly converted
         if isinstance(gridfs_id, str):
             try:
-                import neosqlite
-
                 # If it's a 24-character hex string, create an ObjectId
                 if len(gridfs_id) == 24 and all(
                     c in "0123456789abcdefABCDEF" for c in gridfs_id
@@ -797,8 +787,6 @@ def gridfs_file(file_id):
                 return response
             except Exception as e:
                 print(f"Error converting WebP to JPG: {e}")
-                import traceback
-
                 traceback.print_exc()
                 return "Error converting image", 500
         else:
@@ -828,12 +816,10 @@ def gridfs_file(file_id):
                     response.headers["Last-Modified"] = str(upload_date)
 
             return response
-    except neosqlite.gridfs.errors.NoFile:
+    except gridfs.errors.NoFile:
         return "File not found", 404
     except Exception as e:
         print(f"Error serving GridFS file: {e}")
-        import traceback
-
         traceback.print_exc()
         return "Error retrieving file", 500
 
@@ -862,7 +848,9 @@ def upload():
             return (
                 jsonify(
                     {
-                        "error": "File is not a valid image. Please upload PNG, JPG, JPEG, GIF, or WebP images."
+                        "error": (
+                            "File is not a valid image. Please upload PNG, JPG, JPEG, GIF, or WebP images."
+                        )
                     }
                 ),
                 400,
@@ -870,7 +858,7 @@ def upload():
 
         # Generate a unique filename with user prefix and WebP extension
         filename = secure_filename(file.filename)
-        name, ext = os.path.splitext(filename)
+        name, _ = os.path.splitext(filename)
         unique_filename = f"{session['user']}_{name}_{uuid.uuid4().hex}.webp"
 
         # Save file to GridFS as WebP
@@ -914,7 +902,9 @@ def upload():
                     "user": session["user"],
                     "original_filename": filename,
                     "uploaded_at": time.time(),
-                    "content_type": "image/webp",  # All uploads are converted to WebP
+                    "content_type": (
+                        "image/webp"
+                    ),  # All uploads are converted to WebP
                 },
             )
 
@@ -932,7 +922,9 @@ def upload():
         return (
             jsonify(
                 {
-                    "error": "File type not allowed. Please upload PNG, JPG, JPEG, GIF, or WebP images."
+                    "error": (
+                        "File type not allowed. Please upload PNG, JPG, JPEG, GIF, or WebP images."
+                    )
                 }
             ),
             400,
@@ -1026,8 +1018,9 @@ def list_images():
                     "page": page,
                     "per_page": per_page,
                     "total": total,
-                    "pages": (total + per_page - 1)
-                    // per_page,  # Ceiling division
+                    "pages": (
+                        (total + per_page - 1) // per_page
+                    ),  # Ceiling division
                 },
             }
         )
@@ -1065,7 +1058,7 @@ def upload_image(current_user):
 
             # Generate a unique filename with user prefix and WebP extension
             filename = secure_filename(file.filename)
-            name, ext = os.path.splitext(filename)
+            name, _ = os.path.splitext(filename)
             unique_filename = (
                 f"{current_user['name']}_{name}_{uuid.uuid4().hex}.webp"
             )
@@ -1110,7 +1103,9 @@ def upload_image(current_user):
                         "user": current_user["name"],
                         "original_filename": filename,
                         "uploaded_at": time.time(),
-                        "content_type": "image/webp",  # All uploads are converted to WebP
+                        "content_type": (
+                            "image/webp"
+                        ),  # All uploads are converted to WebP
                     },
                 )
 
@@ -1219,12 +1214,19 @@ def get_publisher_users(db):
 @app.route("/")
 def get_all_posts():
     """
-    Read all blog posts from the database.
+    Read all blog posts from the database with pagination.
     Show all posts to logged-in users, only publisher posts to anonymous users.
     Admins see all posts including from inactive users.
     """
     # Get current user with robust session checking
     current_user = get_current_user()
+
+    # Get pagination parameters
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", POSTS_PER_PAGE))
+
+    # Limit per_page to prevent abuse
+    per_page = min(per_page, MAX_POSTS_PER_PAGE)
 
     # Ensure session is updated with current user info
     if current_user:
@@ -1235,32 +1237,78 @@ def get_all_posts():
 
     if CACHE_ENABLED and not current_user:
         # Only cache for non-logged-in users
-        # Create a cache key for the main posts list
-        cache_key = get_cache_key("get_all_posts")
+        # Create a cache key for the main posts list with pagination params
+        cache_key = get_cache_key(
+            f"get_all_posts_page_{page}_per_page_{per_page}"
+        )
         current_time = time.time()
 
         # Check if we have a cached result that hasn't expired
-        if cache_key in cache_storage:
-            result, timestamp = cache_storage[cache_key]
-            if current_time - timestamp < CACHE_TIMEOUT:
-                response = make_response(result)
+        if isinstance(cache_storage, FileCache):
+            cached_result = cache_storage.get(cache_key)
+            if cached_result is not None:
+                response = make_response(cached_result)
                 # Add cache control for anonymous users
                 response.headers["Cache-Control"] = (
-                    "public, max-age=300"  # Cache for 5 minutes
+                    "public, max_age=300"  # Cache for 5 minutes
                 )
                 return response
+        else:
+            # In-memory cache
+            if cache_key in cache_storage:
+                result, timestamp = cache_storage[cache_key]
+                if current_time - timestamp < CACHE_TIMEOUT:
+                    response = make_response(result)
+                    # Add cache control for anonymous users
+                    response.headers["Cache-Control"] = (
+                        "public, max_age=300"  # Cache for 5 minutes
+                    )
+                    return response
 
         # Generate new result and cache it
         db = get_db()
         # For anonymous users, only show posts from publisher users
         publisher_users = get_publisher_users(db)
+
+        # Calculate skip and limit for pagination
+        skip = (page - 1) * per_page
+
         posts = list(
-            db.blog_posts.find({"author": {"$in": publisher_users}}).sort(
-                "datetime", -1
-            )
+            db.blog_posts.find({"author": {"$in": publisher_users}})
+            .sort("datetime", -1)
+            .skip(skip)
+            .limit(per_page)
         )
-        result = render_template("index.html", all_posts=posts)
-        cache_storage[cache_key] = (result, current_time)
+
+        # Get total count for pagination calculation
+        total_posts = db.blog_posts.count_documents(
+            {"author": {"$in": publisher_users}}
+        )
+
+        # Calculate pagination info
+        total_pages = (
+            total_posts + per_page - 1
+        ) // per_page  # Ceiling division
+        has_next = page < total_pages
+        has_prev = page > 1
+
+        result = render_template(
+            "index.html",
+            all_posts=posts,
+            pagination={
+                "page": page,
+                "per_page": per_page,
+                "total": total_posts,
+                "pages": total_pages,
+                "has_next": has_next,
+                "has_prev": has_prev,
+            },
+        )
+
+        if isinstance(cache_storage, FileCache):
+            cache_storage.set(cache_key, result)
+        else:
+            cache_storage[cache_key] = (result, current_time)
         response = make_response(result)
         # Add cache control for anonymous users
         response.headers["Cache-Control"] = (
@@ -1273,17 +1321,46 @@ def get_all_posts():
         # Admins see all posts including from inactive users, others see posts from active users only
         if current_user and current_user.get("is_admin", False):
             # Admins see all posts
-            posts = list(db.blog_posts.find().sort("datetime", -1))
+            query = {}
         else:
             # Regular users see posts from active users only
             active_users = get_active_users(db)
-            posts = list(
-                db.blog_posts.find({"author": {"$in": active_users}}).sort(
-                    "datetime", -1
-                )
-            )
+            query = {"author": {"$in": active_users}}
+
+        # Calculate skip and limit for pagination
+        skip = (page - 1) * per_page
+
+        posts = list(
+            db.blog_posts.find(query)
+            .sort("datetime", -1)
+            .skip(skip)
+            .limit(per_page)
+        )
+
+        # Get total count for pagination calculation
+        total_posts = db.blog_posts.count_documents(query)
+
+        # Calculate pagination info
+        total_pages = (
+            total_posts + per_page - 1
+        ) // per_page  # Ceiling division
+        has_next = page < total_pages
+        has_prev = page > 1
+
         response = make_response(
-            render_template("index.html", all_posts=posts, user=current_user)
+            render_template(
+                "index.html",
+                all_posts=posts,
+                user=current_user,
+                pagination={
+                    "page": page,
+                    "per_page": per_page,
+                    "total": total_posts,
+                    "pages": total_pages,
+                    "has_next": has_next,
+                    "has_prev": has_prev,
+                },
+            )
         )
         # Don't cache for logged-in users
         if current_user:
@@ -1522,8 +1599,6 @@ def edit_profile(current_user):
         except Exception as e:
             # If parameter binding fails, try with ObjectId directly
             if "Error binding parameter" in str(e) and "ObjectId" in str(e):
-                import neosqlite
-
                 # Convert to ObjectId if it's a valid hex string
                 try:
                     object_id = neosqlite.objectid.ObjectId(current_user["_id"])
@@ -1660,8 +1735,7 @@ def show_post(post_id):
             # Clear cache for this post since we've added a comment
             if CACHE_ENABLED:
                 cache_key = get_cache_key("get_post_with_comments", post_id)
-                if cache_key in cache_storage:
-                    del cache_storage[cache_key]
+                delete_cache_key(cache_storage, cache_key)
             flash("Comment added successfully!")
             return redirect(url_for("show_post", post_id=post_id))
 
@@ -1719,8 +1793,7 @@ def create_post(current_user):
             if CACHE_ENABLED:
                 # Only clear the main posts list cache
                 cache_key = get_cache_key("get_all_posts")
-                if cache_key in cache_storage:
-                    del cache_storage[cache_key]
+                delete_cache_key(cache_storage, cache_key)
             return redirect(url_for("get_all_posts"))
         except Exception as e:
             flash(f"Failed to create post: {str(e)}")
@@ -1796,8 +1869,6 @@ def edit_post(current_user, post_id):
             except Exception as e:
                 # If parameter binding fails, try with ObjectId directly
                 if "Error binding parameter" in str(e) and "ObjectId" in str(e):
-                    import neosqlite
-
                     # Convert to ObjectId if it's a valid hex string
                     try:
                         object_id = neosqlite.objectid.ObjectId(post_id)
@@ -1822,12 +1893,10 @@ def edit_post(current_user, post_id):
             if CACHE_ENABLED:
                 # Clear cache for this specific post
                 cache_key = get_cache_key("get_post_with_comments", post_id)
-                if cache_key in cache_storage:
-                    del cache_storage[cache_key]
+                delete_cache_key(cache_storage, cache_key)
                 # Also clear main posts list cache
                 cache_key = get_cache_key("get_all_posts")
-                if cache_key in cache_storage:
-                    del cache_storage[cache_key]
+                delete_cache_key(cache_storage, cache_key)
             flash("Post Successfully Updated")
             return redirect(url_for("show_post", post_id=post_id))
         return render_template(
@@ -1876,8 +1945,6 @@ def delete_post(current_user, post_id):
         except Exception as e:
             # If parameter binding fails, try with ObjectId directly
             if "Error binding parameter" in str(e) and "ObjectId" in str(e):
-                import neosqlite
-
                 # Convert to ObjectId if it's a valid hex string
                 try:
                     object_id = neosqlite.objectid.ObjectId(post_id)
@@ -1893,12 +1960,10 @@ def delete_post(current_user, post_id):
         if CACHE_ENABLED:
             # Clear cache for this specific post
             cache_key = get_cache_key("get_post_with_comments", post_id)
-            if cache_key in cache_storage:
-                del cache_storage[cache_key]
+            delete_cache_key(cache_storage, cache_key)
             # Also clear main posts list cache
             cache_key = get_cache_key("get_all_posts")
-            if cache_key in cache_storage:
-                del cache_storage[cache_key]
+            delete_cache_key(cache_storage, cache_key)
         return redirect(url_for("get_all_posts"))
     except Exception as e:
         flash(f"Failed to delete post: {str(e)}")
@@ -1946,8 +2011,6 @@ def delete_comment(current_user, comment_id):
     except Exception as e:
         # If parameter binding fails, try with ObjectId directly
         if "Error binding parameter" in str(e) and "ObjectId" in str(e):
-            import neosqlite
-
             # Convert to ObjectId if it's a valid hex string
             try:
                 object_id = neosqlite.objectid.ObjectId(comment_id)
@@ -1963,8 +2026,7 @@ def delete_comment(current_user, comment_id):
     # Clear cache for this post since we've deleted a comment
     if CACHE_ENABLED:
         cache_key = get_cache_key("get_post_with_comments", post_id)
-        if cache_key in cache_storage:
-            del cache_storage[cache_key]
+        delete_cache_key(cache_storage, cache_key)
     return redirect(url_for("show_post", post_id=post_id))
 
 
@@ -2046,11 +2108,30 @@ def search():
     # Get current user with robust session checking
     current_user = get_current_user()
 
+    # Get pagination parameters
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", POSTS_PER_PAGE))
+
+    # Limit per_page to prevent abuse
+    per_page = min(per_page, MAX_POSTS_PER_PAGE)
+
     db = get_db()
-    query = request.form.get("query")
+
+    # Handle both GET and POST requests for query
+    if request.method == "POST":
+        query = request.form.get("query")  # @UndefinedVariable
+        # For POST requests, we redirect to GET to allow for page navigation
+        if query:
+            return redirect(
+                url_for("search", query=query, page=page, per_page=per_page)
+            )
+    else:  # GET request
+        query = request.args.get(
+            "query", ""
+        )  # Use empty string as default to distinguish from None
 
     # Security check: Reject URLs and code patterns
-    if query and is_suspicious_input(query):
+    if query and query.strip() and is_suspicious_input(query):
         flash("Invalid search query. Please use only text in search.")
         return redirect(url_for("get_all_posts"))
 
@@ -2071,8 +2152,11 @@ def search():
         relevant_users = publisher_users
         search_filter_base = {"author": {"$in": publisher_users}}
 
+    # Calculate skip and limit for pagination
+    skip = (page - 1) * per_page
+
     # For neosqlite, we'll use the $text operator with FTS for efficient text search
-    if query:
+    if query and query.strip():
         try:
             # Use neosqlite's $text with $search for FTS-based search
             # This will search across all FTS-indexed fields (title, subtitle, and body)
@@ -2084,7 +2168,15 @@ def search():
                 else {"$text": {"$search": query}}
             )
 
-            posts = list(db.blog_posts.find(search_filter).sort("datetime", -1))
+            # Count total posts for pagination
+            total_posts = db.blog_posts.count_documents(search_filter)
+
+            posts = list(
+                db.blog_posts.find(search_filter)
+                .sort("datetime", -1)
+                .skip(skip)
+                .limit(per_page)
+            )
 
             # Add search relevance scoring
             # NeoSQLite provides a textScore metadata field when using $text search
@@ -2103,8 +2195,6 @@ def search():
         except Exception:
             # If FTS query fails due to special characters, fall back to regex search
             # This is a more basic search but will handle special characters
-            import re
-
             escaped_query = re.escape(query)
 
             # Build the search filter based on user status
@@ -2161,20 +2251,60 @@ def search():
                     ]
                 }
 
-            posts = list(db.blog_posts.find(search_filter).sort("datetime", -1))
+            # Count total posts for pagination
+            total_posts = db.blog_posts.count_documents(search_filter)
+
+            posts = list(
+                db.blog_posts.find(search_filter)
+                .sort("datetime", -1)
+                .skip(skip)
+                .limit(per_page)
+            )
+
     else:
         # Show posts based on user status (active users for logged-in, publisher users for anonymous)
+        search_filter = (
+            {"author": {"$in": relevant_users}} if relevant_users else {}
+        )
+
+        # Count total posts for pagination
+        total_posts = db.blog_posts.count_documents(search_filter)
+
         if relevant_users:
             posts = list(
                 db.blog_posts.find({"author": {"$in": relevant_users}})
+                .sort("datetime", -1)
+                .skip(skip)
+                .limit(per_page)
             )
         else:
             # Admin viewing all posts
-            posts = list(db.blog_posts.find())
+            posts = list(
+                db.blog_posts.find()
+                .sort("datetime", -1)
+                .skip(skip)
+                .limit(per_page)
+            )
+
+    # Calculate pagination info
+    total_pages = (total_posts + per_page - 1) // per_page  # Ceiling division
+    has_next = page < total_pages
+    has_prev = page > 1
 
     response = make_response(
         render_template(
-            "index.html", all_posts=posts, search_query=query, user=current_user
+            "index.html",
+            all_posts=posts,
+            search_query=query,
+            user=current_user,
+            pagination={
+                "page": page,
+                "per_page": per_page,
+                "total": total_posts,
+                "pages": total_pages,
+                "has_next": has_next,
+                "has_prev": has_prev,
+            },
         )
     )
     # Don't cache search results
@@ -2339,8 +2469,6 @@ def toggle_user_status(current_user, user_id):
     except Exception as e:
         # If parameter binding fails, try with ObjectId directly
         if "Error binding parameter" in str(e) and "ObjectId" in str(e):
-            import neosqlite
-
             # Convert to ObjectId if it's a valid hex string
             try:
                 object_id = neosqlite.objectid.ObjectId(user_id)
@@ -2387,8 +2515,6 @@ def make_admin(current_user, user_id):
     except Exception as e:
         # If parameter binding fails, try with ObjectId directly
         if "Error binding parameter" in str(e) and "ObjectId" in str(e):
-            import neosqlite
-
             # Convert to ObjectId if it's a valid hex string
             try:
                 object_id = neosqlite.objectid.ObjectId(user_id)
@@ -2436,8 +2562,6 @@ def toggle_publisher(current_user, user_id):
     except Exception as e:
         # If parameter binding fails, try with ObjectId directly
         if "Error binding parameter" in str(e) and "ObjectId" in str(e):
-            import neosqlite
-
             # Convert to ObjectId if it's a valid hex string
             try:
                 object_id = neosqlite.objectid.ObjectId(user_id)
@@ -2625,6 +2749,118 @@ def ensure_tags_field_on_posts():
         print(f"Updated {updated_count} posts to include empty tags array")
     else:
         print("All posts already have the tags field")
+
+
+def preload_cache():
+    """
+    Preload the cache with frequently accessed data when the app starts.
+    This function is called after the app is loaded when gunicorn uses preload_app=True.
+    """
+    if CACHE_ENABLED:
+        print("Preloading cache with frequently accessed data...")
+
+        # Preload main posts page for anonymous users (first page only to avoid loading all posts)
+        try:
+            with app.app_context():
+                db = get_db()
+
+                # For anonymous users, get posts from publisher users (as in get_all_posts)
+                publisher_users = get_publisher_users(db)
+
+                # Calculate total posts for pagination info
+                total_posts = db.blog_posts.count_documents(
+                    {"author": {"$in": publisher_users}}
+                )
+
+                # Only cache the first page to avoid loading all posts at startup
+                per_page = POSTS_PER_PAGE  # Use the configured default
+                posts = list(
+                    db.blog_posts.find({"author": {"$in": publisher_users}})
+                    .sort("datetime", -1)
+                    .skip(0)
+                    .limit(per_page)
+                )
+
+                # Pre-render the template with posts to populate cache (first page only)
+                cache_key = get_cache_key(
+                    f"get_all_posts_page_1_per_page_{per_page}"
+                )
+
+                total_pages = (
+                    total_posts + per_page - 1
+                ) // per_page  # Ceiling division
+                has_next = 1 < total_pages
+                has_prev = False  # Page 1 never has previous
+
+                # Create a request context to allow render_template to work properly
+                with app.test_request_context("/"):
+                    result = render_template(
+                        "index.html",
+                        all_posts=posts,
+                        pagination={
+                            "page": 1,
+                            "per_page": per_page,
+                            "total": total_posts,
+                            "pages": total_pages,
+                            "has_next": has_next,
+                            "has_prev": has_prev,
+                        },
+                    )
+
+                if isinstance(cache_storage, FileCache):
+                    cache_storage.set(cache_key, result)
+
+                    # For FileCache, we can't easily get the count, so just report success
+                    print("Main posts page (page 1) cached successfully.")
+                    print(
+                        f"Cached {len(posts)} posts out of {total_posts} total posts."
+                    )
+                    print("Cache stored to file system.")
+                else:
+                    # In-memory cache (fallback)
+                    cache_storage[cache_key] = (result, time.time())
+
+                    print("Main posts page (page 1) cached successfully.")
+                    print(
+                        f"Cached {len(posts)} posts out of {total_posts} total posts."
+                    )
+                    print(
+                        f"Cache storage now contains {len(cache_storage)} items."
+                    )
+
+                # Cache could also include other frequently accessed data
+                # For example, we could pre-cache common tag pages or other frequently accessed content
+        except Exception as e:
+            print(f"Error preloading cache: {e}")
+            traceback.print_exc()
+
+        print("Cache preloading completed.")
+
+
+def on_app_ready():
+    """
+    Function to run when the app is ready - this can be used to populate cache
+    or run other initializations after the app is loaded.
+    """
+    # Ensure first admin has publisher status
+    ensure_first_admin_is_publisher()
+
+    # Ensure all posts have tags field
+    ensure_tags_field_on_posts()
+
+    # Clear all existing cache to start fresh
+    if CACHE_ENABLED:
+
+        if isinstance(cache_storage, FileCache):
+            cache_storage.clear()
+            print("Cleared all existing cache files.")
+        else:
+            # In-memory cache
+            cache_storage.clear()
+            print("Cleared all in-memory cache.")
+
+    # Preload cache with frequently accessed data
+    preload_cache()
 
 
 if __name__ == "__main__":

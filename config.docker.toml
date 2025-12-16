@@ -20,6 +20,23 @@ cache_enabled = false
 # Cache timeout in seconds (default: 5 minutes)
 cache_timeout = 300
 
+[posts]
+# Number of posts to display per page
+posts_per_page = 10
+
+# Maximum posts per page allowed (to prevent abuse)
+max_posts_per_page = 50
+
+[caching.storage]
+# Cache storage type: 'memory' or 'file'
+type = "file"
+
+# Directory for file-based cache (only used if type = "file")
+cache_dir = "/data/cache/"
+
+# Maximum cache size in MB (only used if type = "file")
+max_size_mb = 100
+
 [file_uploads]
 # Maximum file upload size in bytes (16MB = 16 * 1024 * 1024)
 max_content_length = 16777216

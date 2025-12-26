@@ -59,6 +59,7 @@ ENV FTS5_ICU_TOKENIZER_PATH=/app/tokenizers
 RUN dnf update -y \
  && dnf upgrade -y \
  && dnf install -y \
+    python \
     libffi \
     openssl \
     libjpeg \

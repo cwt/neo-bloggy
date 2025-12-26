@@ -1,5 +1,5 @@
 # Build stage
-FROM quay.io/cwt/python:3.14.2-optimized-alma as builder
+FROM fedora:43 as builder
 
 # Install build dependencies
 RUN dnf update -y \
@@ -32,8 +32,8 @@ RUN git clone https://github.com/cwt/fts5-icu-tokenizer.git /tmp/fts5-icu-tokeni
 
 # Build fts5-icu-tokenizer
 RUN cd /tmp/fts5-icu-tokenizer && \
-    chmod +x scripts/build_all_legacy.sh && \
-    bash scripts/build_all_legacy.sh
+    chmod +x scripts/build_all.sh && \
+    bash scripts/build_all.sh
 
 # Create app directory and copy built tokenizer libraries
 RUN mkdir -p /app/tokenizers && \
@@ -43,7 +43,7 @@ RUN mkdir -p /app/tokenizers && \
     chmod +r /app/tokenizers/*
 
 # Runtime stage
-FROM quay.io/cwt/python:3.14.2-optimized-alma
+FROM fedora:43
 
 # Set labels for image metadata
 LABEL maintainer="Neo Bloggy Team"
@@ -79,7 +79,7 @@ RUN dnf update -y \
 WORKDIR /app
 
 # Create a virtual environment and activate it
-RUN python3 -m venv .venv
+RUN python -m venv .venv
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy requirements and install Python dependencies

@@ -911,7 +911,7 @@ def upload():
             # Generate URL for the uploaded file (with appropriate extension for social media compatibility)
             content_type = "image/webp"  # All uploads are converted to WebP
             url = url_for(
-                "gridfs_file", file_id=file_id, _external=True
+                "gridfs_file", file_id=file_id
             ) + get_file_extension_from_content_type(content_type)
 
             # Return success response in format expected by markdown editor
@@ -992,7 +992,7 @@ def list_images():
             upload_date = file_doc.upload_date
 
             file_url = url_for(
-                "gridfs_file", file_id=file_id, _external=True
+                "gridfs_file", file_id=file_id
             ) + get_file_extension_from_content_type("image/webp")
 
             # Extract original filename from metadata if available
@@ -1113,7 +1113,7 @@ def upload_image(current_user):
                 # Use a special marker for the URL line so the template can handle it differently
                 content_type = "image/webp"  # All uploads are converted to WebP
                 flash(
-                    f"URL_LINE:{url_for('gridfs_file', file_id=file_id, _external=True)}{get_file_extension_from_content_type(content_type)}"
+                    f"URL_LINE:{url_for('gridfs_file', file_id=file_id)}{get_file_extension_from_content_type(content_type)}"
                 )
             except Exception as e:
                 flash(f"Upload failed: {str(e)}")

@@ -48,7 +48,7 @@
                            {% endif %}
                         </p>
                         <input type="text" class="form-control form-control-sm"
-                               value="{{ url_for('gridfs_file', file_id=file.file_id, _external=True) }}.webp"
+                               value="{{ url_for('gridfs_file', file_id=file.file_id) }}.webp"
                                readonly onclick="this.select()">
                      </div>
                   </div>

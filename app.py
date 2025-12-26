@@ -81,6 +81,9 @@ CACHE_TIMEOUT = config.get("caching", {}).get(
 POSTS_PER_PAGE = config.get("posts", {}).get("posts_per_page", 10)
 MAX_POSTS_PER_PAGE = config.get("posts", {}).get("max_posts_per_page", 50)
 
+# Site configuration
+BASE_URL = config.get("app", {}).get("base_url", "")
+
 app = Flask(__name__)
 
 # Configure the app to trust proxy headers
@@ -2673,8 +2676,11 @@ def sitemap():
         else:
             post["lastmod"] = current_date
 
+    # Use configured base URL if available, otherwise fall back to request.url_root
+    site_url = BASE_URL if BASE_URL else request.url_root
+
     return (
-        render_template("sitemap.xml", posts=posts, current_date=current_date),
+        render_template("sitemap.xml", posts=posts, current_date=current_date, site_url=site_url),
         200,
         {"Content-Type": "application/xml"},
     )
@@ -2695,8 +2701,8 @@ def favicon():
 @app.route("/robots.txt")
 def robots_txt():
     """Generate a dynamic robots.txt file with absolute sitemap URL."""
-    # Get the base URL from the request
-    base_url = request.url_root
+    # Use configured base URL if available, otherwise fall back to request.url_root
+    base_url = BASE_URL if BASE_URL else request.url_root
 
     # Generate the absolute sitemap URL
     sitemap_url = base_url + "sitemap.xml"

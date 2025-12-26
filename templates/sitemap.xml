@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <!-- Homepage -->
     <url>
-        <loc>{{ url_for('get_all_posts', _external=True) }}</loc>
+        <loc>{{ site_url.rstrip('/') }}</loc>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
@@ -11,7 +11,7 @@
     <!-- Blog posts -->
     {% for post in posts %}
     <url>
-        <loc>{{ url_for('show_post', post_id=post._id, _external=True) }}</loc>
+        <loc>{{ site_url }}post/{{ post._id }}</loc>
         <lastmod>{{ post.lastmod }}</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>

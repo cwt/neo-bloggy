@@ -560,6 +560,35 @@ def close_db(error):
     # GridFS doesn't need explicit closing as it uses the same database connection
 
 
+def get_absolute_url(endpoint, **values):
+    """
+    Generate an absolute URL using the configured base URL if available,
+    otherwise fall back to Flask's url_for with _external=True.
+    """
+    # If base_url is configured, construct the URL using it
+    if BASE_URL:
+        # Generate the relative URL first
+        relative_url = url_for(endpoint, **values)
+        # Combine with base URL
+        return BASE_URL.rstrip("/") + relative_url
+    else:
+        # Fall back to Flask's external URL generation
+        return url_for(endpoint, _external=True, **values)
+
+
+def get_canonical_url():
+    """
+    Get the canonical URL for the current request.
+    Uses the configured base URL if available, otherwise falls back to request.url.
+    """
+    if BASE_URL:
+        # Construct canonical URL using base URL and current path
+        return BASE_URL.rstrip("/") + request.path
+    else:
+        # Fall back to the original request URL
+        return request.url
+
+
 def get_current_user():
     """
     Get the current logged-in user from session.
@@ -639,6 +668,8 @@ def inject_site_details():
         ),
         "user": user,
         "csp_nonce": get_csp_nonce(),
+        "get_absolute_url": get_absolute_url,
+        "get_canonical_url": get_canonical_url,
     }
 
 
@@ -2680,7 +2711,12 @@ def sitemap():
     site_url = BASE_URL if BASE_URL else request.url_root
 
     return (
-        render_template("sitemap.xml", posts=posts, current_date=current_date, site_url=site_url),
+        render_template(
+            "sitemap.xml",
+            posts=posts,
+            current_date=current_date,
+            site_url=site_url,
+        ),
         200,
         {"Content-Type": "application/xml"},
     )
@@ -2705,7 +2741,7 @@ def robots_txt():
     base_url = BASE_URL if BASE_URL else request.url_root
 
     # Generate the absolute sitemap URL
-    sitemap_url = base_url + "sitemap.xml"
+    sitemap_url = base_url.rstrip("/") + "/sitemap.xml"
 
     # Render the robots.txt template with the sitemap URL
     return (

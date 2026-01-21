@@ -13,7 +13,7 @@
 
       <!-- Open Graph / Facebook -->
       <meta property="og:type" content="article">
-      <meta property="og:url" content="{{ url_for('show_post', post_id=post._id, _external=True) }}">
+      <meta property="og:url" content="{{ get_absolute_url('show_post', post_id=post._id) }}">
       <meta property="og:title" content="{{ post.title }}">
       <meta property="og:description" content="{{ post.subtitle or post.title[:160] }}">
       {% if post.img_url %}
@@ -22,7 +22,7 @@
 
       <!-- Twitter -->
       <meta property="twitter:card" content="summary_large_image">
-      <meta property="twitter:url" content="{{ url_for('show_post', post_id=post._id, _external=True) }}">
+      <meta property="twitter:url" content="{{ get_absolute_url('show_post', post_id=post._id) }}">
       <meta property="twitter:title" content="{{ post.title }}">
       <meta property="twitter:description" content="{{ post.subtitle or post.title[:160] }}">
       {% if post.img_url %}
@@ -49,7 +49,7 @@
           "name": "{{ site_title }}",
           "logo": {
             "@type": "ImageObject",
-            "url": "{{ url_for("static", filename="img/logo.png", _external=True) }}"
+            "url": "{{ get_absolute_url('static', filename='img/logo.png') }}"
           }
         }
       }
@@ -64,23 +64,23 @@
 
       <!-- Open Graph / Facebook -->
       <meta property="og:type" content="website">
-      <meta property="og:url" content="{{ request.url }}">
+      <meta property="og:url" content="{{ get_canonical_url() }}">
       <meta property="og:title" content="{{ site_title }}">
       <meta property="og:description" content="{{ site_description }}">
-      <meta property="og:image" content="{{ url_for('static', filename='img/logo.png', _external=True) }}">
+      <meta property="og:image" content="{{ get_absolute_url('static', filename='img/logo.png') }}">
 
       <!-- Twitter -->
       <meta property="twitter:card" content="summary_large_image">
-      <meta property="twitter:url" content="{{ request.url }}">
+      <meta property="twitter:url" content="{{ get_canonical_url() }}">
       <meta property="twitter:title" content="{{ site_title }}">
       <meta property="twitter:description" content="{{ site_description }}">
-      <meta property="twitter:image" content="{{ url_for('static', filename='img/logo.png', _external=True) }}">
+      <meta property="twitter:image" content="{{ get_absolute_url('static', filename='img/logo.png') }}">
 
       <title>{{ site_title }}</title>
       {% endif %}
 
       <!-- Canonical URL -->
-      <link rel="canonical" href="{{ request.url }}">
+      <link rel="canonical" href="{{ get_canonical_url() }}">
 
        <!-- FAVICON -->
       <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.ico')}}">

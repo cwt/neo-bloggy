@@ -6,9 +6,9 @@
             <ul class="list-inline text-center">
                <li class="list-inline-item">
                   {% if post %}
-                  <a href="https://x.com/intent/post?url={{ request.url }}&text={{ post.title }}" target="_blank" rel="noopener noreferrer" aria-label="Share on X">
+                  <a href="https://x.com/intent/post?url={{ get_canonical_url() }}&text={{ post.title }}" target="_blank" rel="noopener noreferrer" aria-label="Share on X">
                   {% else %}
-                  <a href="https://x.com/intent/post?url={{ url_for('get_all_posts', _external=True) }}&text=Check out Neo Bloggy!" target="_blank" rel="noopener noreferrer" aria-label="Share Neo Bloggy on X">
+                  <a href="https://x.com/intent/post?url={{ get_absolute_url('get_all_posts') }}&text=Check out Neo Bloggy!" target="_blank" rel="noopener noreferrer" aria-label="Share Neo Bloggy on X">
                   {% endif %}
                   <span class="fa-stack fa-lg">
                   <i class="fas fa-circle fa-stack-2x"></i>
@@ -18,9 +18,9 @@
                </li>
                <li class="list-inline-item">
                   {% if post %}
-                  <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.url }}" target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook">
+                  <a href="https://www.facebook.com/sharer/sharer.php?u={{ get_canonical_url() }}" target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook">
                   {% else %}
-                  <a href="https://www.facebook.com/sharer/sharer.php?u={{ url_for('get_all_posts', _external=True) }}" target="_blank" rel="noopener noreferrer" aria-label="Share Neo Bloggy on Facebook">
+                  <a href="https://www.facebook.com/sharer/sharer.php?u={{ get_absolute_url('get_all_posts') }}" target="_blank" rel="noopener noreferrer" aria-label="Share Neo Bloggy on Facebook">
                   {% endif %}
                   <span class="fa-stack fa-lg">
                   <i class="fas fa-circle fa-stack-2x"></i>

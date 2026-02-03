@@ -6,6 +6,10 @@
 
 Neo Bloggy is a modern blogging platform for amateur writers to showcase their work. This standalone project was originally forked from [Medium Bloggy](https://github.com/leithdm/medium-bloggy) but has been completely rebranded and modernized with significant enhancements.
 
+## Live Demo
+
+Experience Neo Bloggy in action at [https://neo.bashell.com/](https://neo.bashell.com/) - a fully functional production instance of the platform showcasing all features including user authentication, blog management, commenting system, search functionality, and admin panel controls.
+
 The project has been fundamentally transformed to use **[NeoSQLite](https://github.com/cwt/neosqlite)** as the database backend, replacing MongoDB/PyMongo entirely. This demonstrates that NeoSQLite can effectively replace MongoDB in a Flask application while providing a lightweight alternative without requiring external database servers.
 
 ## Key Changes from Original Project

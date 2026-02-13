@@ -290,6 +290,38 @@ def clear_cache():
     clear_cache_internal(cache_storage)
 
 
+# Functions to manage the version of posts cache using cache-backed storage
+def increment_posts_cache_version():
+    """Increment the posts cache version in storage to invalidate all post-related caches."""
+    if not CACHE_ENABLED:
+        return
+    current_version = get_posts_cache_version()
+    new_version = current_version + 1
+
+    if isinstance(cache_storage, FileCache):
+        cache_storage.set("posts_cache_version", new_version)
+    else:
+        # In-memory cache fallback
+        cache_storage["posts_cache_version"] = (new_version, time.time())
+
+
+def get_posts_cache_version():
+    """Get the current posts cache version from storage."""
+    if not CACHE_ENABLED:
+        return 0
+
+    if isinstance(cache_storage, FileCache):
+        version = cache_storage.get("posts_cache_version")
+        return version if version is not None else 0
+    else:
+        # In-memory cache fallback
+        if "posts_cache_version" in cache_storage:
+            version, timestamp = cache_storage["posts_cache_version"]
+            if time.time() - timestamp < CACHE_TIMEOUT:
+                return version
+        return 0
+
+
 # Add a filter to get datetime field from an object (fallback to date if needed)
 @app.template_filter("get_datetime")
 def get_datetime_filter(obj):
@@ -1271,9 +1303,10 @@ def get_all_posts():
 
     if CACHE_ENABLED and not current_user:
         # Only cache for non-logged-in users
-        # Create a cache key for the main posts list with pagination params
+        # Create a cache key for the main posts list with pagination params and cache version
+        cache_version = get_posts_cache_version()
         cache_key = get_cache_key(
-            f"get_all_posts_page_{page}_per_page_{per_page}"
+            f"get_all_posts_v{cache_version}_page_{page}_per_page_{per_page}"
         )
         current_time = time.time()
 
@@ -1825,9 +1858,8 @@ def create_post(current_user):
             flash("Post Successfully Added")
             # Clear cache since we've added a new post
             if CACHE_ENABLED:
-                # Only clear the main posts list cache
-                cache_key = get_cache_key("get_all_posts")
-                delete_cache_key(cache_storage, cache_key)
+                # Increment cache version to invalidate all paginated posts cache
+                increment_posts_cache_version()
             return redirect(url_for("get_all_posts"))
         except Exception as e:
             flash(f"Failed to create post: {str(e)}")
@@ -1928,9 +1960,8 @@ def edit_post(current_user, post_id):
                 # Clear cache for this specific post
                 cache_key = get_cache_key("get_post_with_comments", post_id)
                 delete_cache_key(cache_storage, cache_key)
-                # Also clear main posts list cache
-                cache_key = get_cache_key("get_all_posts")
-                delete_cache_key(cache_storage, cache_key)
+                # Also increment cache version to invalidate all paginated main posts list caches
+                increment_posts_cache_version()
             flash("Post Successfully Updated")
             return redirect(url_for("show_post", post_id=post_id))
         return render_template(
@@ -1995,9 +2026,8 @@ def delete_post(current_user, post_id):
             # Clear cache for this specific post
             cache_key = get_cache_key("get_post_with_comments", post_id)
             delete_cache_key(cache_storage, cache_key)
-            # Also clear main posts list cache
-            cache_key = get_cache_key("get_all_posts")
-            delete_cache_key(cache_storage, cache_key)
+            # Also increment cache version to invalidate all paginated main posts list caches
+            increment_posts_cache_version()
         return redirect(url_for("get_all_posts"))
     except Exception as e:
         flash(f"Failed to delete post: {str(e)}")
@@ -2830,8 +2860,9 @@ def preload_cache():
                 )
 
                 # Pre-render the template with posts to populate cache (first page only)
+                cache_version = get_posts_cache_version()
                 cache_key = get_cache_key(
-                    f"get_all_posts_page_1_per_page_{per_page}"
+                    f"get_all_posts_v{cache_version}_page_1_per_page_{per_page}"
                 )
 
                 total_pages = (

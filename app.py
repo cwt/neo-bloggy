@@ -2740,8 +2740,8 @@ def sitemap():
     # Use configured base URL if available, otherwise fall back to request.url_root
     site_url = BASE_URL if BASE_URL else request.url_root
     # Ensure site_url ends with a slash for the sitemap homepage entry
-    if not site_url.endswith('/'):
-        site_url += '/'
+    if not site_url.endswith("/"):
+        site_url += "/"
 
     return (
         render_template(
@@ -2773,8 +2773,8 @@ def robots_txt():
     # Use configured base URL if available, otherwise fall back to request.url_root
     base_url = BASE_URL if BASE_URL else request.url_root
     # Ensure base_url ends with a slash for proper URL construction
-    if not base_url.endswith('/'):
-        base_url += '/'
+    if not base_url.endswith("/"):
+        base_url += "/"
 
     # Generate the absolute sitemap URL
     sitemap_url = base_url + "sitemap.xml"

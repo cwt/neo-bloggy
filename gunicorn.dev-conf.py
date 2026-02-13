@@ -31,8 +31,8 @@ access_log_format = (
 proc_name = "neo_bloggy"
 
 # Server mechanics
-#user = "appuser"
-#group = "appuser"
+# user = "appuser"
+# group = "appuser"
 tmp_upload_dir = None
 
 # Debugging

@@ -3,6 +3,10 @@ from flask_bootstrap import Bootstrap5
 from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 
+from neo_bloggy.caching import on_app_ready
+
+__all__ = ["create_app", "on_app_ready"]
+
 
 def create_app(config_class=None):
     app = Flask(
@@ -115,8 +119,6 @@ def create_app(config_class=None):
     app.register_blueprint(file_upload_bp)
 
     # Initialize app-level tasks
-    from neo_bloggy.caching import on_app_ready
-
     with app.app_context():
         on_app_ready()
 

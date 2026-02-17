@@ -1,7 +1,9 @@
-from neo_bloggy import create_app
+from neo_bloggy import create_app, on_app_ready
 import os
 
 app = create_app()
+
+__all__ = ["app", "on_app_ready"]
 
 if __name__ == "__main__":
     from neo_bloggy.config import config

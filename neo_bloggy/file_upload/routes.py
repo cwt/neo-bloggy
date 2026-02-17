@@ -4,6 +4,7 @@ from neo_bloggy.file_upload import (
     upload,
     list_images,
     upload_image,
+    delete_image,
 )
 from neo_bloggy.auth import login_required
 
@@ -29,3 +30,9 @@ def api_list_images():
 @login_required
 def web_upload_image(current_user):
     return upload_image(current_user)
+
+
+@file_upload_bp.route("/api/images/<file_id>", methods=["DELETE"])
+@login_required
+def api_delete_image(current_user, file_id):
+    return delete_image(current_user, file_id)

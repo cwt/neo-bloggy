@@ -58,6 +58,8 @@ def get_db():
             g.db.blog_posts.create_index("author")
             # Create index for tags field to support $elemMatch queries
             g.db.blog_posts.create_index("tags")
+            # Create index for img_url field (used for checking image usage before deletion)
+            g.db.blog_posts.create_index("img_url")
             # Create datetime index on comments datetime
             g.db.blog_comments.create_index("datetime", datetime_field=True)
             # Create index for parent_post field (heavily used for finding comments for a post)

@@ -38,18 +38,27 @@
             <div class="row">
                {% for file in uploaded_files %}
                <div class="col-md-4 mb-3">
-                  <div class="card">
-                     <img src="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp" class="card-img-top" alt="{{ file.display_name }}">
+                  <div class="card image-card">
+                     <div class="image-container">
+                        <img src="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp" class="card-img-top" alt="{{ file.display_name }}">
+                     </div>
                      <div class="card-body">
                         <p class="card-text">
-                           <small class="text-muted">{{ file.display_name }}</small>
+                           <small class="text-muted filename-text">{{ file.display_name }}</small>
                            {% if user and user.is_admin %}
                            <br><small class="text-muted">Uploaded by: {{ file.user }}</small>
                            {% endif %}
                         </p>
-                        <input type="text" class="form-control form-control-sm"
+                        <input type="text" class="form-control form-control-sm url-input"
                                value="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp"
                                readonly onclick="this.select()">
+                        <div class="mt-2">
+                           <button class="btn btn-danger btn-sm btn-delete-image"
+                                   data-file-id="{{ file.file_id }}"
+                                   data-file-name="{{ file.display_name }}">
+                              <i class="bi bi-trash"></i> Delete
+                           </button>
+                        </div>
                      </div>
                   </div>
                </div>
@@ -109,8 +118,9 @@
 {% include "footer.html" %}
 
 <script nonce="{{ csp_nonce }}">
-// Add copy functionality for URL buttons
+// Add copy functionality for URL buttons and delete functionality
 document.addEventListener('DOMContentLoaded', function() {
+    // Copy URL functionality
     const copyButtons = document.querySelectorAll('.copy-url-btn');
     copyButtons.forEach(button => {
         button.addEventListener('click', function() {
@@ -124,6 +134,69 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 2000);
             }).catch(err => {
                 console.error('Failed to copy URL: ', err);
+            });
+        });
+    });
+
+    // Delete image functionality
+    const deleteButtons = document.querySelectorAll('.btn-delete-image');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const fileId = this.getAttribute('data-file-id');
+            const fileName = this.getAttribute('data-file-name');
+            
+            // Confirm deletion
+            if (!confirm(`Are you sure you want to delete the image "${fileName}"?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+            
+            // Disable button to prevent multiple clicks
+            this.disabled = true;
+            this.textContent = 'Deleting...';
+            
+            // Send DELETE request
+            fetch(`/api/images/${fileId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                return response.json().then(data => {
+                    if (response.status === 200) {
+                        // Success - remove the card from the DOM
+                        const card = this.closest('.col-md-4');
+                        card.remove();
+
+                        // Check if no images left
+                        const remainingImages = document.querySelectorAll('.col-md-4');
+                        if (remainingImages.length === 0) {
+                            location.reload();
+                        }
+                    } else {
+                        // Error - throw with the data from server
+                        throw data;
+                    }
+                });
+            })
+            .catch(error => {
+                // Re-enable button
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-trash"></i> Delete';
+
+                // Build error message
+                let errorMessage = error.error || 'Failed to delete image';
+                
+                // If image is in use, show detailed error with post information
+                if (error.posts && error.posts.length > 0) {
+                    errorMessage += '\n\n';
+                    error.posts.forEach(post => {
+                        errorMessage += `• ${post.title}\n  (Post ID: ${post.post_id})\n`;
+                    });
+                    errorMessage += '\nPlease update or delete these posts before deleting this image.';
+                }
+
+                alert(errorMessage);
             });
         });
     });

@@ -31,6 +31,7 @@ from neo_bloggy.utils import (
     validate_image_content,
     get_file_extension_from_content_type,
 )
+from neo_bloggy.models import Post
 
 logger = logging.getLogger(__name__)
 
@@ -563,3 +564,110 @@ def upload_image(current_user):
         total_pages=total_pages,
         per_page=per_page,
     )
+
+
+def delete_image(current_user, file_id):
+    """Delete an uploaded image.
+
+    Authorization rules:
+    - Admin can delete any image
+    - Regular users can only delete their own images
+
+    Checks:
+    - Verify the image is not being used as a jumbotron in any post
+    """
+    try:
+        # Check if user is logged in
+        if not current_user:
+            return (
+                jsonify({"error": "You must be logged in to delete images"}),
+                403,
+            )
+
+        # Check if user is active (non-admin users must be active)
+        if not current_user.get("is_admin", False) and not current_user.get(
+            "is_active", True
+        ):
+            return (
+                jsonify(
+                    {
+                        "error": "Your account has been disabled. You cannot delete images."
+                    }
+                ),
+                403,
+            )
+
+        gfs = get_gridfs()
+        if gfs is None:
+            return jsonify({"error": "File storage system unavailable"}), 500
+
+        # Convert file_id to ObjectId for GridFS operations
+        try:
+            gridfs_id = get_objectid_for_gridfs(file_id)
+        except ValueError:
+            return jsonify({"error": "Invalid file ID format"}), 400
+
+        # Find the file in GridFS using find() with _id filter
+        cursor = gfs.find({"_id": gridfs_id})
+        files = list(cursor)
+
+        if not files:
+            return jsonify({"error": "Image not found"}), 404
+
+        # Get the first (and should be only) file from the cursor
+        file_doc = files[0]
+
+        # Get file metadata
+        metadata = getattr(file_doc, "metadata", {})
+        file_user = metadata.get("user", "Unknown")
+
+        # Check authorization
+        is_admin = current_user.get("is_admin", False)
+        is_owner = file_user == current_user["name"]
+
+        if not is_admin and not is_owner:
+            return (
+                jsonify({"error": "You can only delete your own images"}),
+                403,
+            )
+
+        # Check if the image is being used as a jumbotron in any post
+        # Use database query with index for better performance
+        posts_using_image = []
+
+        # Search for posts using the file_id in their img_url
+        # The regex will match URLs containing the file_id (with or without extensions)
+        matching_posts = Post.find_by_img_url(file_id)
+
+        for post in matching_posts:
+            posts_using_image.append(
+                {
+                    "post_id": str(post["_id"]),
+                    "title": post.get("title", "Untitled"),
+                    "img_url": post.get("img_url", ""),
+                }
+            )
+
+        # If image is being used, return error with details
+        if posts_using_image:
+            return (
+                jsonify(
+                    {
+                        "error": "Cannot delete image because it is being used as a jumbotron in the following post(s):",
+                        "posts": posts_using_image,
+                    }
+                ),
+                409,
+            )  # 409 Conflict
+
+        # Delete the file from GridFS
+        gfs.delete(gridfs_id)
+
+        return (
+            jsonify({"success": True, "message": "Image deleted successfully"}),
+            200,
+        )
+
+    except Exception as e:
+        logger.error("Error deleting image: %s", e, exc_info=True)
+        return jsonify({"error": f"Failed to delete image: {str(e)}"}), 500

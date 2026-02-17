@@ -170,6 +170,13 @@ class Post(BaseModel):
         return cls.find_many({}, sort=("datetime", -1), skip=skip, limit=limit)
 
     @classmethod
+    def find_by_img_url(cls, img_url_pattern):
+        """Find posts that contain the given image URL pattern."""
+        # Use regex to find posts where img_url contains the pattern
+        # This works for both full URL matches and partial matches (with file_id)
+        return cls.find_many({"img_url": {"$regex": img_url_pattern}})
+
+    @classmethod
     def create_post(cls, post_data):
         """Create a new post."""
         return cls.insert_one(post_data)

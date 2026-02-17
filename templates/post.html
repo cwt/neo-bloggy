@@ -7,8 +7,7 @@
 
 <!-- Load EasyMDE resources only when needed -->
 {% if session.user %}
-<link rel="preload" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css" as="style" class="preload-style">
-<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css"></noscript>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css">
 {% endif %}
 <div class="jumbotron jumbotron-cover" style="background-image: url('{{ post.img_url }}');">
    <div class="container">

@@ -21,6 +21,7 @@ We've significantly modified this project to work with NeoSQLite, demonstrating 
 3. **Enhanced Performance**: Improved performance by eliminating external database dependencies
 4. **Simplified Deployment**: Removed MongoDB Atlas requirements for a truly standalone experience
 5. **Modern Features**: Updated to Bootstrap 5.3, Flask 3.1, and modern Python practices
+6. **Modular Architecture**: Refactored the monolithic `app.py` into a clean, modular structure using the Application Factory pattern and Flask Blueprints for better maintainability and scalability
 
 ## Technologies Used
 
@@ -34,7 +35,7 @@ We've significantly modified this project to work with NeoSQLite, demonstrating 
 ### Back-End Technologies
 - Python 3.x
 - Flask 3.1
-- NeoSQLite 1.2.1 or newer
+- NeoSQLite 1.2.0 or newer
 - Flask-Bootstrap5 2.5.0
 - Flask-WTF 1.2.2
 
@@ -126,7 +127,9 @@ This application includes several modern web development features:
 
 ### Code Modernization
 - Updated to Flask 3.1 with modern Python practices
-- Removed deprecated libraries and methods
+- Implemented **Application Factory pattern** and **Flask Blueprints** for a clean, modular codebase
+- Separated concerns into dedicated modules: `auth`, `admin`, `posts`, `search`, and `file_upload`
+- Introduced a **Service Layer** to separate business logic from request handling
 - Improved code structure and maintainability
 - Enhanced security with input validation and XSS protection
 
@@ -134,9 +137,10 @@ This application includes several modern web development features:
 This application includes several security and performance features:
 
 #### Content Security Policy (CSP)
-- **Permissive by Design**: The application uses a permissive CSP policy ("default-src *") for maximum compatibility across different deployment environments
-- **Flexible Security**: This approach allows the application to work in various environments while enabling administrators to implement more restrictive CSP policies via web servers (nginx, Apache) or CDNs as needed
-- **Nonce Implementation**: All inline scripts and styles use CSP nonces for additional security
+- **Balanced Security**: The application uses a CSP policy that balances security with practical usability
+- **Trusted Sources**: Scripts and styles are allowed from `'self'`, `'unsafe-inline'`, and trusted CDNs (jsdelivr, cdnjs, Font Awesome, Google Fonts, Twitter, Google Tag Manager)
+- **Font Awesome Support**: Includes support for Font Awesome icons used by the EasyMDE editor
+- **Flexible Deployment**: Administrators can implement more restrictive CSP policies via web servers (nginx, Apache) or CDNs as needed
 
 #### Caching
 Optional caching mechanism to improve performance:
@@ -243,53 +247,63 @@ This allows you to place your configuration file in any location, making it easi
 
 ## Deployment
 
-This application can be easily deployed to platforms like Heroku without requiring a separate MongoDB database. The NeoSQLite database file will be created automatically when the application runs.
+Neo Bloggy is designed for flexible deployment on any cloud or hosting platform:
 
-### Docker Deployment
+### Key Deployment Concepts
 
-Neo Bloggy can be easily deployed using Docker, with support for multiple architectures including riscv64, x86_64, arm64, and others.
+1. **No External Database Required**: The NeoSQLite database is a single file that can be stored anywhere accessible to your application
 
-#### Building the Docker Image
+2. **Configuration via Environment**: Use `NEO_BLOGGY_CONFIG_PATH` environment variable to specify your config file location:
+   ```bash
+   NEO_BLOGGY_CONFIG_PATH=/path/to/config.toml python app.py
+   ```
 
-To build the Docker image locally:
+3. **Persistent Storage**: Ensure the database file and any uploaded files are stored on persistent storage (not ephemeral container storage)
 
-```bash
-docker build -t neo-bloggy .
-```
+4. **WSGI Server**: For production, use a WSGI server like Gunicorn:
+   ```bash
+   gunicorn -c gunicorn.conf.py app:app
+   ```
 
-#### Running with Docker
+### Platform-Specific Notes
 
-To run the application using Docker:
+- **Docker**: Mount volumes for `/data` (database) and your config file
+- **Heroku/Render/Railway**: Use their persistent storage addons for the database file
+- **VPS/Cloud VMs**: Standard deployment with systemd or supervisor
+- **Shared Hosting**: Works with any Python hosting that supports WSGI
 
-```bash
-docker run -p 8000:8000 -v /path/to/data:/data:z neo-bloggy
-```
-
-This command:
-- Maps port 8000 on the host to port 8000 in the container (where the application runs)
-- Mounts the database file for persistence
-- Mounts the configuration file for customization
-
-#### Configuration with Docker
-
-When running with Docker, you can customize the application behavior through environment variables:
-
-- `NEO_BLOGGY_CONFIG_PATH`: Path to the configuration file (default: `/data/config.toml`)
-
-You can also create your own `config.toml` file and mount it as a volume to customize the application settings.
+The application automatically adapts to your environment through the `config.toml` file.
 
 ## Database Migrations
 
-This project includes several migration scripts to help manage database schema changes:
+This project includes several migration scripts to help manage database schema changes, located in the `scripts/` directory:
 
-- `migrate_to_gridfs.py`: Migrates existing file uploads to GridFS storage
-- `migrate_to_objectid.py`: Migrates old integer IDs to MongoDB-style ObjectIds
-- `migrate_admin_publisher.py`: Ensures the first admin user also has publisher status
+- `scripts/migrate_to_gridfs.py`: Migrates existing file uploads to GridFS storage
+- `scripts/migrate_to_objectid.py`: Migrates old integer IDs to MongoDB-style ObjectIds
+- `scripts/migrate_admin_publisher.py`: Ensures the first admin user also has publisher status
+- `scripts/update_user.py`: Command-line tool for user management (enable/disable, admin status)
 
-These scripts should be run manually as needed when upgrading the application or when specific database changes are required. They can be run as standalone Python scripts:
+These scripts should be run manually as needed when upgrading the application or when specific database changes are required. They can be run as standalone Python scripts from the project root:
 
 ```bash
-python migrate_admin_publisher.py
+python scripts/migrate_admin_publisher.py
 ```
 
-When adding the new tag feature to existing installations, if you want to add the `tags` field to existing posts, you can run a simple update command in the application or manually update all existing posts with an empty tags array.
+When adding the new tag feature to existing installations, the application automatically ensures the `tags` field exists on startup via the `on_app_ready` hook.
+
+## Debug Package
+
+Neo Bloggy includes a comprehensive debug package with various testing and troubleshooting scripts:
+
+- `debug/`: Contains debugging scripts for different aspects of the application
+  - `debug_detailed.py`: Detailed debugging for main application flow
+  - `debug_post_detailed.py`: Post-specific functionality testing
+  - `debug_post_route.py`: Post route functionality testing
+  - `debug_simulate_flow.py`: Simulates request flows to identify pipeline issues
+
+These scripts can be run independently to troubleshoot specific functionality:
+
+```bash
+python -m debug.debug_detailed
+python -m debug.debug_simulate_flow
+```

@@ -3,22 +3,35 @@
 Migration script to move all existing files from filesystem to GridFS.
 """
 
+import logging
 import os
 import sys
 import time
 import tomllib
 
 # Add the project directory to the Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 # Import the app and its configuration
-from app import app, get_db, get_gridfs
+from app import app
+from neo_bloggy.database import get_db, get_gridfs
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 def load_config():
     """Load configuration from file, with support for custom path via environment variable."""
     # Check for custom config path in environment variable
-    config_path = os.environ.get("NEO_BLOGGY_CONFIG_PATH", "config.toml")
+    config_path = os.environ.get("NEO_BLOGGY_CONFIG_PATH")
+    if not config_path:
+        # Default to config.toml in the parent directory
+        config_path = os.path.join(
+            os.path.dirname(__file__), "..", "config.toml"
+        )
 
     config = {}
     if os.path.exists(config_path):
@@ -56,26 +69,26 @@ def extract_username_from_filename(filename):
 def migrate_files_to_gridfs():
     """Migrate all existing files from filesystem to GridFS."""
 
-    print("Starting migration of files from filesystem to GridFS...")
+    logger.info("Starting migration of files from filesystem to GridFS...")
 
     # Get upload folder path
     upload_folder = app.config["UPLOAD_FOLDER"]
 
     # Check if upload folder exists
     if not os.path.exists(upload_folder):
-        print("Upload folder does not exist. Nothing to migrate.")
+        logger.info("Upload folder does not exist. Nothing to migrate.")
         return
 
     # Get list of files in upload folder
     try:
         files = os.listdir(upload_folder)
-        print(f"Found {len(files)} files to migrate.")
+        logger.info("Found %d files to migrate.", len(files))
     except Exception as e:
-        print(f"Error reading upload folder: {e}")
+        logger.error("Error reading upload folder: %s", e)
         return
 
     if not files:
-        print("No files to migrate.")
+        logger.info("No files to migrate.")
         return
 
     # Initialize database connection
@@ -84,7 +97,7 @@ def migrate_files_to_gridfs():
         gfs = get_gridfs()
 
         if gfs is None:
-            print("Error: Could not initialize GridFS")
+            logger.error("Error: Could not initialize GridFS")
             return
 
         migrated_count = 0
@@ -93,7 +106,7 @@ def migrate_files_to_gridfs():
         # Process each file
         for filename in files:
             try:
-                print(f"Processing {filename}...")
+                logger.info("Processing %s...", filename)
 
                 # Skip non-files
                 file_path = os.path.join(upload_folder, filename)
@@ -121,21 +134,23 @@ def migrate_files_to_gridfs():
                         },
                     )
 
-                print(f"  Successfully migrated {filename} with ID {file_id}")
+                logger.info(
+                    "  Successfully migrated %s with ID %s", filename, file_id
+                )
                 migrated_count += 1
 
             except Exception as e:
-                print(f"  Error migrating {filename}: {e}")
+                logger.error("  Error migrating %s: %s", filename, e)
                 error_count += 1
                 continue
 
-        print("\nMigration completed!")
-        print(f"  Successfully migrated: {migrated_count}")
-        print(f"  Errors: {error_count}")
+        logger.info("\nMigration completed!")
+        logger.info("  Successfully migrated: %d", migrated_count)
+        logger.info("  Errors: %d", error_count)
 
         # Optionally remove the original files after successful migration
         if migrated_count > 0 and error_count == 0:
-            print("\nAll files migrated successfully.")
+            logger.info("\nAll files migrated successfully.")
             response = input(
                 "Do you want to remove the original files from the filesystem? (y/N): "
             )
@@ -145,23 +160,25 @@ def migrate_files_to_gridfs():
                     if os.path.isfile(file_path):
                         try:
                             os.remove(file_path)
-                            print(f"  Removed {filename}")
+                            logger.info("  Removed %s", filename)
                         except Exception as e:
-                            print(f"  Error removing {filename}: {e}")
-                print("Original files removed from filesystem.")
+                            logger.error("  Error removing %s: %s", filename, e)
+                logger.info("Original files removed from filesystem.")
                 # Also remove the upload directory if it's empty
                 try:
                     os.rmdir(upload_folder)
-                    print("Upload directory removed.")
+                    logger.info("Upload directory removed.")
                 except Exception as e:
-                    print(
-                        f"Could not remove upload directory (might not be empty): {e}"
+                    logger.info(
+                        "Could not remove upload directory (might not be empty): %s",
+                        e,
                     )
             else:
-                print("Original files kept in filesystem.")
+                logger.info("Original files kept in filesystem.")
         elif error_count > 0:
-            print(
-                f"\nMigration completed with {error_count} errors. Please check the files manually."
+            logger.info(
+                "\nMigration completed with %d errors. Please check the files manually.",
+                error_count,
             )
 
 

@@ -1,0 +1,119 @@
+"""Authentication module for Neo Bloggy application."""
+
+from flask import g, session
+from functools import wraps
+from neo_bloggy.database import get_db
+
+
+def get_current_user():
+    """
+    Get the current logged-in user from session.
+    Returns None if no user is logged in or if there's an issue.
+    """
+    if "user" not in session:
+        return None
+
+    try:
+        db = get_db()
+        user = db.users.find_one({"name": session["user"]})
+        # Check if user exists and is active
+        if user and user.get("is_active", True):
+            return user
+        else:
+            # If user is disabled or doesn't exist, clear the session
+            session.clear()
+            return None
+    except Exception:
+        # If there's any database error, clear the session
+        session.clear()
+        return None
+
+
+def login_required(f):
+    """
+    Decorator to require login for routes.
+    """
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        current_user = get_current_user()
+        if not current_user:
+            from flask import flash, redirect, url_for
+
+            flash("You need to login to access this page.")
+            return redirect(url_for("auth.login"))
+        return f(current_user=current_user, *args, **kwargs)
+
+    return decorated_function
+
+
+def admin_required(f):
+    """
+    Decorator to require admin privileges for routes.
+    """
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        current_user = get_current_user()
+        if not current_user:
+            from flask import flash, redirect, url_for
+
+            flash("You need to login to access this page.")
+            return redirect(url_for("auth.login"))
+        if not current_user.get("is_admin", False):
+            from flask import flash, redirect, url_for
+
+            flash("You don't have permission to access this page.")
+            return redirect(url_for("posts.get_all_posts"))
+        return f(current_user=current_user, *args, **kwargs)
+
+    return decorated_function
+
+
+def generate_nonce():
+    """Generate a unique nonce for CSP."""
+    import secrets
+
+    return secrets.token_urlsafe(16)
+
+
+def get_csp_nonce():
+    """Get or create a CSP nonce for the current request."""
+    if not hasattr(g, "csp_nonce"):
+        g.csp_nonce = generate_nonce()
+    return g.csp_nonce
+
+
+def get_absolute_url(endpoint, **values):
+    """
+    Generate an absolute URL using the configured base URL if available,
+    otherwise fall back to Flask's url_for with _external=True.
+    """
+    from neo_bloggy.config import BASE_URL
+    from flask import url_for
+
+    # If base_url is configured, construct the URL using it
+    if BASE_URL:
+        # Generate the relative URL first
+        relative_url = url_for(endpoint, **values)
+        # Combine with base URL
+        return BASE_URL.rstrip("/") + relative_url
+    else:
+        # Fall back to Flask's external URL generation
+        return url_for(endpoint, _external=True, **values)
+
+
+def get_canonical_url():
+    """
+    Get the canonical URL for the current request.
+    Uses the configured base URL if available, otherwise falls back to request.url.
+    """
+    from neo_bloggy.config import BASE_URL
+    from flask import request
+
+    if BASE_URL:
+        # Construct canonical URL using base URL and current path
+        return BASE_URL.rstrip("/") + request.path
+    else:
+        # Fall back to the original request URL
+        return request.url

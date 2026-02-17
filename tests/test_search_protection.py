@@ -1,4 +1,5 @@
-from app import is_suspicious_input
+"""Tests for search input validation and protection."""
+
 import os
 import sys
 import unittest
@@ -6,6 +7,9 @@ import unittest
 # Add the project directory to the Python path
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_dir)
+
+# Import after path setup
+from neo_bloggy.utils import is_suspicious_input  # noqa: E402
 
 
 class TestSearchProtection(unittest.TestCase):

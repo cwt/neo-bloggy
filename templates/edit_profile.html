@@ -11,7 +11,7 @@
       </div>
    </div>
 
-   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}, {'name': 'Profile', 'url': url_for('profile', username=session['user'])}, {'name': 'Edit Profile', 'url': '#'}] %}
+   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('posts.get_all_posts')}, {'name': 'Profile', 'url': url_for('auth.profile', username=session['user'])}, {'name': 'Edit Profile', 'url': '#'}] %}
       {% include "breadcrumb.html" %}
    {% endwith %}
    <div class="container">

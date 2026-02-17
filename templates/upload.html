@@ -11,7 +11,7 @@
       </div>
    </div>
 
-   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}, {'name': 'Upload Image', 'url': '#'}] %}
+   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('posts.get_all_posts')}, {'name': 'Upload Image', 'url': '#'}] %}
       {% include "breadcrumb.html" %}
    {% endwith %}
    <div class="container">
@@ -39,7 +39,7 @@
                {% for file in uploaded_files %}
                <div class="col-md-4 mb-3">
                   <div class="card">
-                     <img src="{{ url_for('gridfs_file', file_id=file.file_id) }}.webp" class="card-img-top" alt="{{ file.display_name }}">
+                     <img src="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp" class="card-img-top" alt="{{ file.display_name }}">
                      <div class="card-body">
                         <p class="card-text">
                            <small class="text-muted">{{ file.display_name }}</small>
@@ -48,7 +48,7 @@
                            {% endif %}
                         </p>
                         <input type="text" class="form-control form-control-sm"
-                               value="{{ url_for('gridfs_file', file_id=file.file_id) }}.webp"
+                               value="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp"
                                readonly onclick="this.select()">
                      </div>
                   </div>
@@ -63,7 +63,7 @@
                   <!-- Previous page -->
                   {% if current_page > 1 %}
                   <li class="page-item">
-                     <a class="page-link" href="{{ url_for('upload_image') }}?page={{ current_page - 1 }}" aria-label="Previous">
+                     <a class="page-link" href="{{ url_for('file_upload.web_upload_image') }}?page={{ current_page - 1 }}" aria-label="Previous">
                         <span aria-hidden="true">&laquo; Previous</span>
                      </a>
                   </li>
@@ -76,14 +76,14 @@
                   <!-- Page numbers -->
                   {% for page_num in range(max(1, current_page-2), min(total_pages+1, current_page+3)) %}
                   <li class="page-item {% if page_num == current_page %}active{% endif %}">
-                     <a class="page-link" href="{{ url_for('upload_image') }}?page={{ page_num }}">{{ page_num }}</a>
+                     <a class="page-link" href="{{ url_for('file_upload.web_upload_image') }}?page={{ page_num }}">{{ page_num }}</a>
                   </li>
                   {% endfor %}
                   
                   <!-- Next page -->
                   {% if current_page < total_pages %}
                   <li class="page-item">
-                     <a class="page-link" href="{{ url_for('upload_image') }}?page={{ current_page + 1 }}" aria-label="Next">
+                     <a class="page-link" href="{{ url_for('file_upload.web_upload_image') }}?page={{ current_page + 1 }}" aria-label="Next">
                         <span aria-hidden="true">Next &raquo;</span>
                      </a>
                   </li>

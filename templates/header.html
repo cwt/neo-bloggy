@@ -13,7 +13,7 @@
 
       <!-- Open Graph / Facebook -->
       <meta property="og:type" content="article">
-      <meta property="og:url" content="{{ get_absolute_url('show_post', post_id=post._id) }}">
+      <meta property="og:url" content="{{ get_absolute_url('posts.show_post', post_id=post._id) }}">
       <meta property="og:title" content="{{ post.title }}">
       <meta property="og:description" content="{{ post.subtitle or post.title[:160] }}">
       {% if post.img_url %}
@@ -22,7 +22,7 @@
 
       <!-- Twitter -->
       <meta property="twitter:card" content="summary_large_image">
-      <meta property="twitter:url" content="{{ get_absolute_url('show_post', post_id=post._id) }}">
+      <meta property="twitter:url" content="{{ get_absolute_url('posts.show_post', post_id=post._id) }}">
       <meta property="twitter:title" content="{{ post.title }}">
       <meta property="twitter:description" content="{{ post.subtitle or post.title[:160] }}">
       {% if post.img_url %}
@@ -30,7 +30,7 @@
       {% endif %}
 
       <!-- Article schema -->
-      <script type="application/ld+json">
+      <script type="application/ld+json" nonce="{{ csp_nonce }}">
       {
         "@context": "https://schema.org",
         "@type": "Article",
@@ -91,10 +91,10 @@
       <link rel="preconnect" href="https://fonts.googleapis.com">
 
       <!-- Optimize CSS loading by making render-blocking resources non-blocking -->
-      <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+      <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" as="style" class="preload-style">
       <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"></noscript>
 
-      <link rel="preload" href="https://use.fontawesome.com/releases/v6.5.1/css/all.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+      <link rel="preload" href="https://use.fontawesome.com/releases/v6.5.1/css/all.css" as="style" class="preload-style">
       <noscript><link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.5.1/css/all.css"></noscript>
 
 
@@ -122,21 +122,21 @@
          .profile-jumbotron { background: url("/static/img/webp/signup.webp") no-repeat center center; background-size: cover; }
       </style>
       <!-- Non-critical CSS loaded asynchronously -->
-      <link href="{{ url_for('static', filename='css/style.css')}}" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
+      <link href="{{ url_for('static', filename='css/style.css')}}" rel="preload" as="style" class="preload-style">
       <noscript><link rel="stylesheet" href="{{ url_for('static', filename='css/style.css')}}"></noscript>
-      <link href="{{ url_for('static', filename='css/pygments.css', v='1.1')}}" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
+      <link href="{{ url_for('static', filename='css/pygments.css', v='1.1')}}" rel="preload" as="style" class="preload-style">
       <noscript><link rel="stylesheet" href="{{ url_for('static', filename='css/pygments.css', v='1.1')}}"></noscript>
 
       <!-- Preload highlight.js stylesheet -->
-      <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+      <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" as="style" class="preload-style">
       <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css"></noscript>
 
       <!-- Preload jumbotron background images -->
       {% if not post %}
-         <!-- Main jumbotron background image for index page -->
+         <!-- Preload jumbotron image based on the page -->
+         {% if request.endpoint == 'get_all_posts' %}
          <link rel="preload" href="{{ url_for('static', filename='img/webp/background.webp') }}" as="image">
-         <!-- Preload other jumbotron images conditionally based on the page -->
-         {% if request.endpoint == 'login' %}
+         {% elif request.endpoint == 'login' %}
          <link rel="preload" href="{{ url_for('static', filename='img/webp/login.webp') }}" as="image">
          {% elif request.endpoint == 'register' %}
          <link rel="preload" href="{{ url_for('static', filename='img/webp/signup.webp') }}" as="image">
@@ -144,7 +144,7 @@
          <link rel="preload" href="{{ url_for('static', filename='img/webp/create.webp') }}" as="image">
          {% elif request.endpoint == 'upload_image' %}
          <link rel="preload" href="{{ url_for('static', filename='img/webp/upload.webp') }}" as="image">
-         {% elif request.endpoint == 'profile' or request.endpoint == 'admin_panel' or request.endpoint == 'unpublished_posts' or request.endpoint == 'edit_profile' %}
+         {% elif request.endpoint in ('profile', 'admin_panel', 'unpublished_posts', 'edit_profile') %}
          <link rel="preload" href="{{ url_for('static', filename='img/webp/signup.webp') }}" as="image">
          {% endif %}
       {% else %}
@@ -157,11 +157,14 @@
       <!-- Optimize Google Fonts loading -->
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=IBM+Plex+Sans+Thai+Looped:wght@100;200;300;400;500;600;700&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
+      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=IBM+Plex+Sans+Thai+Looped:wght@100;200;300;400;500;600;700&display=swap" rel="preload" as="style" class="preload-style">
       <noscript><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=IBM+Plex+Sans+Thai+Looped:wght@100;200;300;400;500;600;700&display=swap" rel="stylesheet"></noscript>
 
       <!-- Load highlight.js script asynchronously -->
       <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" async></script>
+
+      <!-- Helper script to load preloaded stylesheets without inline handlers -->
+      <script src="{{ url_for('static', filename='js/loadcss.js') }}" nonce="{{ csp_nonce }}"></script>
    </head>
    <body>
 
@@ -169,42 +172,42 @@
       <header>
          <nav class="navbar navbar-expand-md navbar-light fixed-top bg-light">
             <div class="container">
-               <a class="navbar-brand" href="{{url_for('get_all_posts')}}"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="{{ site_title }} Logo" height="48"></a>
+               <a class="navbar-brand" href="{{url_for('posts.get_all_posts')}}"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="{{ site_title }} Logo" height="48"></a>
                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
                   <span class="navbar-toggler-icon"></span>
                </button>
                <div class="collapse navbar-collapse" id="navbarResponsive">
                   <ul class="navbar-nav ms-auto align-items-center">
                      <li class="nav-item">
-                        <form class="d-flex" role="search" action="{{ url_for('search') }}" method="POST">
+                        <form class="d-flex" role="search" action="{{ url_for('search.search') }}" method="POST">
                            <div class="input-group">
                               <input class="form-control" type="search" name="query" placeholder="Search all posts..." value="{{ search_query or '' }}" aria-label="Search">
                               <button class="btn btn-outline-info search-icon-btn" type="submit" aria-label="Search">🔍</button>
-                              <a class="btn btn-outline-info search-icon-btn" href="{{ url_for('get_all_posts') }}" role="button" aria-label="Reset">✕</a>
+                              <a class="btn btn-outline-info search-icon-btn" href="{{ url_for('posts.get_all_posts') }}" role="button" aria-label="Reset">✕</a>
                            </div>
                         </form>
                      </li>
                      {% if not session.user %}
                      <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('login') }}">Sign In</a>
+                        <a class="nav-link" href="{{ url_for('auth.login') }}">Sign In</a>
                      </li>
                      <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('register') }}">Get Started</a>
+                        <a class="nav-link" href="{{ url_for('auth.register') }}">Get Started</a>
                      </li>
                      {% else %}
                      <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('create_post') }}">Write</a>
+                        <a class="nav-link" href="{{ url_for('posts.create_post') }}">Write</a>
                      </li>
                      <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('upload_image') }}">Upload Image</a>
+                        <a class="nav-link" href="{{ url_for('file_upload.web_upload_image') }}">Upload Image</a>
                      </li>
                      {% if user and user.is_admin %}
                      <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_panel') }}">Admin Panel</a>
+                        <a class="nav-link" href="{{ url_for('admin.admin_panel') }}">Admin Panel</a>
                      </li>
                      {% endif %}
                      <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('profile', username=session['user']) }}">Profile</a>
+                        <a class="nav-link" href="{{ url_for('auth.profile', username=session['user']) }}">Profile</a>
                      </li>
                      {% endif %}
                   </ul>
@@ -215,20 +218,20 @@
 
       {% with messages = get_flashed_messages() %}
       {% if messages %}
-      <div class="container" style="position: absolute; top: 70px; left: 0; right: 0; z-index: 1000;">
+      <div class="container alert-flash">
          {% for message in messages %}
          {% if message.startswith('URL_LINE:') %}
-         <div class="alert alert-success" role="alert" style="word-break: break-all; white-space: normal; background-color: rgba(209, 231, 221, 0.9) !important;">
+         <div class="alert alert-success alert-flash-success" role="alert" style="word-break: break-all; white-space: normal;">
             <strong>Image URL:</strong><br>
             <code>{{ message[9:] }}</code>
-            <button class="btn btn-xs btn-outline-secondary ms-2 copy-url-btn"
-                    data-url="{{ message[9:] }}" style="padding: 0.1rem 0.25rem; font-size: 0.75rem;">Copy</button>
+            <button class="btn btn-xs btn-outline-secondary ms-2 copy-url-btn btn-copy"
+                    data-url="{{ message[9:] }}">Copy</button>
          </div>
          {% else %}
             {% if 'already exists' in message or 'failed' in message or 'error' in message.lower() %}
-            <div class="alert alert-danger" role="alert" style="background-color: rgba(248, 215, 218, 0.9) !important;">
+            <div class="alert alert-danger alert-flash-danger" role="alert">
             {% else %}
-            <div class="alert alert-info" role="alert" style="background-color: rgba(207, 244, 252, 0.9) !important;">
+            <div class="alert alert-info alert-flash-info" role="alert">
             {% endif %}
                {{ message }}
             </div>

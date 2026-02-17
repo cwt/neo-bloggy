@@ -1,29 +1,29 @@
 {% include "header.html" %}
 
 <!-- Hidden image to ensure high priority loading for profile jumbotron background -->
-<img src="{{ url_for('static', filename='img/webp/signup.webp') }}" style="display:none;" fetchpriority="high" alt="" aria-hidden="true">
+<img src="{{ url_for('static', filename='img/webp/signup.webp') }}" class="hidden" fetchpriority="high" alt="" aria-hidden="true">
 <main role="main">
    <div class="jumbotron profile-jumbotron">
-      <div class="container" style="position: relative;">
+      <div class="container position-relative">
          <h1 class="display-2 profile-name">{{ username.title() }}'s Profile</h1>
          <hr class="my-4">
          <p>Manage your posts and comments.</p>
          {% if user and user.is_admin %}
-         <span class="badge bg-primary" style="position: absolute; top: 1rem; right: 1rem;">Administrator</span>
+         <span class="badge bg-primary badge-admin">Administrator</span>
          {% elif user and user.is_publisher %}
-         <span class="badge bg-success" style="position: absolute; top: 1rem; right: 1rem;">Publisher</span>
+         <span class="badge bg-success badge-admin">Publisher</span>
          {% else %}
-         <span class="badge bg-secondary" style="position: absolute; top: 1rem; right: 1rem;">User</span>
+         <span class="badge bg-secondary badge-admin">User</span>
          {% endif %}
          {% if user and not user.is_active %}
-         <span class="badge bg-danger" style="position: absolute; top: 3rem; right: 1rem;">Account Disabled</span>
+         <span class="badge bg-danger badge-status">Account Disabled</span>
          {% endif %}
-         <a href="{{ url_for('edit_profile') }}" class="btn btn-primary me-2" style="position: absolute; bottom: 1rem; right: 6rem;">Edit Profile</a>
-         <a href="{{ url_for('logout') }}" class="btn btn-danger" style="position: absolute; bottom: 1rem; right: 1rem;">Log Out</a>
+         <a href="{{ url_for('auth.edit_profile') }}" class="btn btn-primary me-2 btn-profile-action">Edit Profile</a>
+         <a href="{{ url_for('auth.logout') }}" class="btn btn-danger btn-profile-logout">Log Out</a>
       </div>
    </div>
 
-   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}, {'name': username.title() ~ "'s Profile", 'url': '#'}] %}
+   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('posts.get_all_posts')}, {'name': username.title() ~ "'s Profile", 'url': '#'}] %}
       {% include "breadcrumb.html" %}
    {% endwith %}
    <div class="container">
@@ -47,10 +47,10 @@
                <tr class="table-text">
                   <td>{{ loop.index }}.</td>
                   <td><img src="{{ post.img_url }}" class="img-thumbnail small-image"></td>
-                  <td><a href="{{ url_for('show_post', post_id=post._id) }}">{{ post.title }}</a></td>
+                  <td><a href="{{ url_for('posts.show_post', post_id=post._id) }}">{{ post.title }}</a></td>
                   <td>{{ post | get_datetime | format_datetime }}</td>
                   <td><a class="btn btn-outline-secondary float-start"
-                     href="{{ url_for('edit_post', post_id=post._id) }}">Edit Post
+                     href="{{ url_for('posts.edit_post', post_id=post._id) }}">Edit Post
                      </a>
                   </td>
                   <td>
@@ -74,7 +74,7 @@
                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close
                                  </button>
                                  <a class="btn btn-outline-danger"
-                                    href="{{ url_for('delete_post', post_id=post._id) }}">Delete Post
+                                    href="{{ url_for('posts.delete_post', post_id=post._id) }}">Delete Post
                                  </a>
                               </div>
                            </div>

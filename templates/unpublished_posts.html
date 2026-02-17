@@ -11,7 +11,7 @@
       </div>
    </div>
 
-   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}, {'name': 'Admin Panel', 'url': url_for('admin_panel')}, {'name': 'Unpublished Posts', 'url': '#'}] %}
+   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('posts.get_all_posts')}, {'name': 'Admin Panel', 'url': url_for('admin.admin_panel')}, {'name': 'Unpublished Posts', 'url': '#'}] %}
       {% include "breadcrumb.html" %}
    {% endwith %}
 
@@ -40,7 +40,7 @@
                <tr class="table-text">
                   <td>{{ loop.index }}.</td>
                   <td><img src="{{ post.img_url }}" class="img-thumbnail small-image"></td>
-                  <td><a href="{{ url_for('show_post', post_id=post._id) }}">{{ post.title }}</a></td>
+                  <td><a href="{{ url_for('posts.show_post', post_id=post._id) }}">{{ post.title }}</a></td>
                   <td>{{ post.author }}</td>
                   <td>{{ post | get_datetime | format_datetime }}</td>
                   <td>

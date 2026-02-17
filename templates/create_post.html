@@ -1,10 +1,10 @@
 {% include "header.html" %}
 
 <!-- Hidden image to ensure high priority loading for write jumbotron background -->
-<img src="{{ url_for('static', filename='img/webp/create.webp') }}" style="display:none;" fetchpriority="high" alt="" aria-hidden="true">
+<img src="{{ url_for('static', filename='img/webp/create.webp') }}" class="hidden" fetchpriority="high" alt="" aria-hidden="true">
 
 <!-- Load EasyMDE resources only when needed -->
-<link rel="preload" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css" as="style" class="preload-style">
 <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css"></noscript>
 <main role="main">
    <div class="jumbotron write-jumbotron">
@@ -24,11 +24,11 @@
    </div>
 
    {% if is_edit %}
-      {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}, {'name': post.title, 'url': url_for('show_post', post_id=post._id)}, {'name': 'Edit Post', 'url': '#'}] %}
+      {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('posts.get_all_posts')}, {'name': post.title, 'url': url_for('posts.show_post', post_id=post._id)}, {'name': 'Edit Post', 'url': '#'}] %}
          {% include "breadcrumb.html" %}
       {% endwith %}
    {% else %}
-      {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}, {'name': 'New Post', 'url': '#'}] %}
+      {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('posts.get_all_posts')}, {'name': 'New Post', 'url': '#'}] %}
          {% include "breadcrumb.html" %}
       {% endwith %}
    {% endif %}
@@ -82,12 +82,12 @@
 </main>
 
 <!-- File Browser Modal -->
-<div class="modal fade" id="imageBrowserModal" tabindex="-1" role="dialog">
+<div class="modal fade" id="imageBrowserModal" tabindex="-1" role="dialog" aria-hidden="true" aria-label="Image browser modal">
    <div class="modal-dialog modal-lg" role="document">
       <div class="modal-content">
          <div class="modal-header">
             <h5 class="modal-title">Select an Image</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal">
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
             </button>
          </div>
          <div class="modal-body">
@@ -312,7 +312,24 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         // Show modal using Bootstrap 5 JavaScript
-        var modal = new bootstrap.Modal(document.getElementById('imageBrowserModal'));
+        var modalElement = document.getElementById('imageBrowserModal');
+        var modal = new bootstrap.Modal(modalElement, {
+            keyboard: true
+        });
+        
+        // Override Bootstrap's aria-hidden management
+        modalElement.addEventListener('show.bs.modal', function () {
+            // Bootstrap will set aria-hidden, but we remove it immediately
+            setTimeout(function() {
+                modalElement.removeAttribute('aria-hidden');
+            }, 0);
+        });
+        
+        // Add aria-hidden when modal is hidden
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            modalElement.setAttribute('aria-hidden', 'true');
+        });
+        
         modal.show();
 
         // Load images from API with pagination

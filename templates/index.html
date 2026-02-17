@@ -8,14 +8,14 @@
          <hr class="my-4">
          <p>Read and share new perspectives on any topic.</p>
          {% if not session.user %}
-         <a class="nav-link" href="{{ url_for('register') }}">
+         <a class="nav-link" href="{{ url_for('auth.register') }}">
             <div class="btn btn-dark btn-sm rounded-pill">Get Started</div>
          </a>
          {% endif %}
       </div>
    </div>
 
-   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('get_all_posts')}], active_page='Home' %}
+   {% with breadcrumb_items=[{'name': 'Home', 'url': url_for('posts.get_all_posts')}], active_page='Home' %}
       {% include "breadcrumb.html" %}
    {% endwith %}
    <!-- POST CARD-CONTENT -->
@@ -29,7 +29,7 @@
                {% if related_tags and related_tags|length > 0 %}
                <p><strong>Related tags:</strong>
                   {% for related_tag in related_tags %}
-                  <a href="{{ url_for('posts_by_tag', tag=related_tag) }}" class="badge bg-light text-dark text-decoration-none me-1">{{ related_tag }}</a>
+                  <a href="{{ url_for('posts.posts_by_tag', tag=related_tag) }}" class="badge bg-light text-dark text-decoration-none me-1">{{ related_tag }}</a>
                   {% endfor %}
                </p>
                {% endif %}
@@ -52,14 +52,14 @@
                   </div>
                   <div class="col-md-8">
                      <div class="card-body">
-                        <a href="{{ url_for('show_post', post_id=post._id) }}">
+                        <a href="{{ url_for('posts.show_post', post_id=post._id) }}">
                            <h3 class="card-title">{{post.title}}</h3>
                            <p class="card-text">{{ post.subtitle }}</p>
                         </a>
                         {% if post.tags and post.tags|length > 0 %}
                         <div class="post-tags mb-2">
                            {% for tag in post.tags[:3] %}  <!-- Show first 3 tags -->
-                           <a href="{{ url_for('posts_by_tag', tag=tag) }}" class="badge bg-secondary text-decoration-none me-1">{{ tag }}</a>
+                           <a href="{{ url_for('posts.posts_by_tag', tag=tag) }}" class="badge bg-secondary text-decoration-none me-1">{{ tag }}</a>
                            {% endfor %}
                            {% if post.tags|length > 3 %}
                            <small class="text-muted">+{{ post.tags|length - 3 }} more</small>

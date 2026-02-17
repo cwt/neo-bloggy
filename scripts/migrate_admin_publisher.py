@@ -3,16 +3,25 @@
 Migration script to fix existing databases where first admin user is not a publisher.
 This script should be run once to ensure any existing first admin user also has publisher status.
 """
+import logging
+import os
 import sys
 
-sys.path.insert(0, "/home/cwt/Projects/neo-bloggy")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app import app, get_db
+from app import app
+from neo_bloggy.database import get_db
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 def migrate_admin_publisher_status():
     """Migrate existing admin users to also have publisher status."""
-    print(
+    logger.info(
         "Starting migration to ensure admin users also have publisher status..."
     )
 
@@ -33,23 +42,25 @@ def migrate_admin_publisher_status():
             )
 
             if not admin_not_publisher:
-                print(
-                    "✅ No users found that need migration (all admins are already publishers)."
+                logger.info(
+                    "No users found that need migration (all admins are already publishers)."
                 )
                 return
 
-            print(
-                f"Found {len(admin_not_publisher)} admin users who are not publishers. Updating..."
+            logger.info(
+                "Found %d admin users who are not publishers. Updating...",
+                len(admin_not_publisher),
             )
 
             for user in admin_not_publisher:
-                print(f"  - Updating user: {user['name']}")
+                logger.info("  - Updating user: %s", user["name"])
                 db.users.update_one(
                     {"_id": user["_id"]}, {"$set": {"is_publisher": True}}
                 )
 
-            print(
-                f"✅ Successfully updated {len(admin_not_publisher)} users to have publisher status."
+            logger.info(
+                "Successfully updated %d users to have publisher status.",
+                len(admin_not_publisher),
             )
 
             # Verify the changes
@@ -58,17 +69,15 @@ def migrate_admin_publisher_status():
             )
 
             if still_not_publisher:
-                print(
-                    f"⚠️  Warning: {len(still_not_publisher)} admin users still don't have publisher status."
+                logger.warning(
+                    "%d admin users still don't have publisher status.",
+                    len(still_not_publisher),
                 )
             else:
-                print("✅ All admin users now have publisher status.")
+                logger.info("All admin users now have publisher status.")
 
     except Exception as e:
-        print(f"❌ Migration failed with error: {e}")
-        import traceback
-
-        traceback.print_exc()
+        logger.error("Migration failed with error: %s", e, exc_info=True)
 
 
 if __name__ == "__main__":

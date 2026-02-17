@@ -47,11 +47,70 @@ html {
      border-bottom-right-radius: 5px;
      border-bottom-left-radius: 5px;
 }
- .commentList {
-     padding: 0;
-     list-style: none;
+.commentList {
+    padding: 0;
+    list-style: none;
 }
- .commentList li {
+
+/* Utility classes for CSP compliance */
+.hidden {
+    display: none !important;
+}
+.position-relative {
+    position: relative !important;
+}
+.position-fixed {
+    position: fixed !important;
+}
+.badge-admin {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+}
+.badge-status {
+    position: absolute;
+    top: 3rem;
+    right: 1rem;
+}
+.btn-profile-action {
+    position: absolute;
+    bottom: 1rem;
+    right: 6rem;
+}
+.btn-profile-logout {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+}
+.alert-flash {
+    position: absolute;
+    top: 70px;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+.alert-flash-success {
+    background-color: rgba(209, 231, 221, 0.9) !important;
+}
+.alert-flash-danger {
+    background-color: rgba(248, 215, 218, 0.9) !important;
+}
+.alert-flash-info {
+    background-color: rgba(207, 244, 252, 0.9) !important;
+}
+.btn-copy {
+    padding: 0.1rem 0.25rem;
+    font-size: 0.75rem;
+}
+.jumbotron-cover {
+    background-size: cover;
+}
+.image-thumbnail {
+    height: 150px;
+    object-fit: cover;
+}
+
+.commentList li {
      display: flex;
      align-items: flex-start;
      margin: 0;

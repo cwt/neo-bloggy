@@ -11,6 +11,7 @@ This script:
 import logging
 
 from neo_bloggy import create_app
+from neo_bloggy.database import get_db
 from neo_bloggy.models import Post
 
 logging.basicConfig(
@@ -29,7 +30,7 @@ def debug_img_url_index_usage():
     logger.info("=" * 60)
 
     with app.app_context():
-        db = Post.get_db()
+        db = get_db()
         collection = db.blog_posts
 
         # List existing indexes

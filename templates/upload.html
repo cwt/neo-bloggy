@@ -52,7 +52,11 @@
                         <input type="text" class="form-control form-control-sm url-input"
                                value="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp"
                                readonly onclick="this.select()">
-                        <div class="mt-2">
+                        <div class="mt-2 d-flex flex-column gap-2">
+                           <button class="btn btn-outline-primary btn-sm copy-url-btn"
+                                   data-url="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id, _external=True) }}.webp">
+                              <i class="bi bi-clipboard"></i> Copy Image URL
+                           </button>
                            <button class="btn btn-danger btn-sm btn-delete-image"
                                    data-file-id="{{ file.file_id }}"
                                    data-file-name="{{ file.display_name }}">
@@ -120,20 +124,32 @@
 <script nonce="{{ csp_nonce }}">
 // Add copy functionality for URL buttons and delete functionality
 document.addEventListener('DOMContentLoaded', function() {
+    // Track the currently copied button
+    let lastCopiedButton = null;
+
     // Copy URL functionality
     const copyButtons = document.querySelectorAll('.copy-url-btn');
     copyButtons.forEach(button => {
         button.addEventListener('click', function() {
             const url = this.getAttribute('data-url');
             navigator.clipboard.writeText(url).then(() => {
-                // Show feedback
-                const originalText = this.textContent;
-                this.textContent = '✓';
+                // Reset previous button
+                if (lastCopiedButton && lastCopiedButton !== this) {
+                    lastCopiedButton.innerHTML = '<i class="bi bi-clipboard"></i> Copy Image URL';
+                }
+                // Show feedback on current button
+                lastCopiedButton = this;
+                this.innerHTML = 'Copied!';
                 setTimeout(() => {
-                    this.textContent = originalText;
+                    // Only reset if this button is still the last copied one
+                    if (lastCopiedButton === this) {
+                        this.innerHTML = '<i class="bi bi-clipboard"></i> Copy Image URL';
+                        lastCopiedButton = null;
+                    }
                 }, 2000);
             }).catch(err => {
                 console.error('Failed to copy URL: ', err);
+                alert('Failed to copy URL. Please copy manually.');
             });
         });
     });

@@ -44,10 +44,14 @@
             <hr>
             {% if session.user and (session.user == post.author or user and user.is_admin) %}
             <div class="clearfix mb-5">
-               <button type="button" class="btn btn-outline-danger float-end" data-bs-toggle="modal"
-                  data-bs-target="#delete{{ post._id }}">
-               Delete Post
-               </button>
+               <div class="form-group submit-group">
+                  <a class="btn btn-outline-secondary"
+                     href="{{ url_for('posts.edit_post', post_id=post._id) }}">Edit Post</a>
+                  <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                     data-bs-target="#delete{{ post._id }}">
+                  Delete Post
+                  </button>
+               </div>
                <!-- Modal -->
                <div class="modal fade" id="delete{{ post._id }}" tabindex="-1" role="dialog"
                   aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
@@ -70,8 +74,6 @@
                      </div>
                   </div>
                </div>
-               <a class="btn btn-outline-secondary float-start"
-                  href="{{ url_for('posts.edit_post', post_id=post._id) }}">Edit Post</a>
             </div>
             {% endif %}
          </div>

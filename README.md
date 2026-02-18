@@ -43,6 +43,7 @@ We've significantly modified this project to work with NeoSQLite, demonstrating 
 
 - **User Authentication**: Register, login, and logout functionality with security questions for password recovery
 - **Blog Management**: Create, read, update, and delete blog posts with Markdown support
+- **Draft System**: Save posts as drafts before publishing, with drafts displayed separately on your profile
 - **Comment System**: Users can comment on posts with Markdown support
 - **Search Functionality**: Full-text search across posts using NeoSQLite's FTS capabilities, with optional support for Asian languages (Chinese, Japanese, Korean, Thai, etc.) through custom FTS5 tokenizers
 - **File Uploads**: Image upload functionality with automatic WebP conversion for posts
@@ -74,6 +75,31 @@ The admin panel provides administrators with tools to manage the platform:
    - Administrators can rebuild FTS indexes for optimal search performance, including when using custom tokenizers for Asian language support
 
 To access the admin panel, navigate to `/admin` or click "Admin Panel" in the navigation menu (only visible to administrators).
+
+## Draft System
+
+Neo Bloggy includes a comprehensive draft system for content creators:
+
+1. **Creating Drafts**:
+   - Click "Save as Draft" when creating or editing a post to save it without publishing
+   - Drafts are visible only to the author and administrators
+   - Image URL is optional for drafts (required for published posts)
+
+2. **Managing Drafts**:
+   - All drafts appear at the top of your "Your Posts" section on your profile page
+   - Drafts are marked with a "Draft" badge for easy identification
+   - Edit and delete drafts just like published posts
+
+3. **Publishing Drafts**:
+   - Edit a draft and click "Publish" to make it visible to the public
+   - Published posts require an image URL
+   - Once published, posts appear on the homepage and in search results
+
+4. **Profile Page**:
+   - Unified "Your Posts" table shows both drafts and published posts
+   - Drafts listed first, followed by published posts
+   - Subtitle displayed below title for posts that have one
+   - Edit and Delete buttons grouped together for easy access
 
 ## NeoSQLite Advantages Demonstrated
 
@@ -289,7 +315,14 @@ These scripts should be run manually as needed when upgrading the application or
 python scripts/migrate_admin_publisher.py
 ```
 
-When adding the new tag feature to existing installations, the application automatically ensures the `tags` field exists on startup via the `on_app_ready` hook.
+### Automatic Migrations
+
+The application automatically handles the following migrations on startup via the `on_app_ready` hook:
+
+- **Tags Field**: Ensures all posts have a `tags` field (defaults to empty array)
+- **Status Field**: Ensures all posts have a `status` field (defaults to "published" for backward compatibility with existing posts)
+
+These automatic migrations ensure backward compatibility when upgrading from older versions.
 
 ## Debug Package
 

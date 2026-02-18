@@ -54,7 +54,8 @@
                                readonly onclick="this.select()">
                         <div class="mt-2 d-flex flex-column gap-2">
                            <button class="btn btn-outline-primary btn-sm copy-url-btn"
-                                   data-url="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id, _external=True) }}.webp">
+                                   data-url="{{ config.app.base_url }}{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp"
+                                   data-relative-url="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp">
                               <i class="bi bi-clipboard"></i> Copy Image URL
                            </button>
                            <button class="btn btn-danger btn-sm btn-delete-image"
@@ -131,7 +132,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const copyButtons = document.querySelectorAll('.copy-url-btn');
     copyButtons.forEach(button => {
         button.addEventListener('click', function() {
-            const url = this.getAttribute('data-url');
+            // Get URL - use base_url if configured, otherwise build from current origin
+            let url = this.getAttribute('data-url');
+            // If data-url starts with / (relative), build absolute URL from current location
+            if (url && url.startsWith('/')) {
+                const relativeUrl = this.getAttribute('data-relative-url');
+                url = window.location.origin + relativeUrl;
+            }
             navigator.clipboard.writeText(url).then(() => {
                 // Reset previous button
                 if (lastCopiedButton && lastCopiedButton !== this) {

@@ -230,6 +230,12 @@ cache_timeout = 300
    site_author = "Neo Bloggy"
    site_description = "Modern Blogging Platform"
    
+   # External URL for the site (used for image URLs, sitemap.xml, and social media sharing)
+   # Example: "https://yourdomain.com/" - must include trailing slash
+   # IMPORTANT: Set this in production to ensure correct absolute URLs for features like
+   # copying image URLs, social media meta tags, and any externally-shared links
+   base_url = "https://yourdomain.com/"
+
    [database]
    # Path to the NeoSQLite database file
    # Default: neo-bloggy.db in the project directory

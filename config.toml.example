@@ -18,7 +18,8 @@ site_author = "Neo Bloggy"
 site_description = "Modern Blogging Platform"
 # External URL for the site (used for sitemap.xml and other external links)
 # Example: "https://yourdomain.com/" - must include trailing slash
-base_url = ""
+# IMPORTANT: Set this in production to ensure correct URLs for image sharing and social media
+base_url = "https://yourdomain.com/"
 
 [database]
 # Path to the NeoSQLite database file

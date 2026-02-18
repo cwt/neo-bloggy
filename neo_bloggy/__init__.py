@@ -63,6 +63,7 @@ def create_app(config_class=None):
             session["user"] = user["name"]
 
         return {
+            "config": config,
             "site_title": config.get("app", {}).get("site_title", "Neo Bloggy"),
             "site_author": config.get("app", {}).get(
                 "site_author", "Neo Bloggy"

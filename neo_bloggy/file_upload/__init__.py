@@ -635,9 +635,11 @@ def delete_image(current_user, file_id):
         # Use database query with index for better performance
         posts_using_image = []
 
-        # Search for posts using the file_id in their img_url
-        # The regex will match URLs containing the file_id (with or without extensions)
-        matching_posts = Post.find_by_img_url(file_id)
+        # Search for posts using the exact img_url (all uploads are converted to .webp)
+        img_url = (
+            url_for("file_upload.serve_gridfs_file", file_id=file_id) + ".webp"
+        )
+        matching_posts = Post.find_by_img_url(img_url)
 
         for post in matching_posts:
             posts_using_image.append(

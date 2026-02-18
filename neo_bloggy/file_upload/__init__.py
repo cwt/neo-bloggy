@@ -229,6 +229,7 @@ def upload():
         filename = secure_filename(file.filename)
         name, _ = os.path.splitext(filename)
         unique_filename = f"{session['user']}_{name}_{uuid.uuid4().hex}.webp"
+        original_filename_webp = f"{name}.webp"
 
         # Save file to GridFS as WebP
         try:
@@ -269,7 +270,7 @@ def upload():
                 img_buffer,
                 metadata={
                     "user": session["user"],
-                    "original_filename": filename,
+                    "original_filename": original_filename_webp,
                     "uploaded_at": time.time(),
                     "content_type": (
                         "image/webp"
@@ -428,6 +429,7 @@ def upload_image(current_user):
             unique_filename = (
                 f"{current_user['name']}_{name}_{uuid.uuid4().hex}.webp"
             )
+            original_filename_webp = f"{name}.webp"
 
             # Save file to GridFS as WebP
             try:
@@ -467,7 +469,7 @@ def upload_image(current_user):
                     img_buffer,
                     metadata={
                         "user": current_user["name"],
-                        "original_filename": filename,
+                        "original_filename": original_filename_webp,
                         "uploaded_at": time.time(),
                         "content_type": (
                             "image/webp"

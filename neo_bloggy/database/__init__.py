@@ -60,6 +60,8 @@ def get_db():
             g.db.blog_posts.create_index("tags")
             # Create index for img_url field (used for checking image usage before deletion)
             g.db.blog_posts.create_index("img_url")
+            # Create index for status field (used to filter drafts)
+            g.db.blog_posts.create_index("status")
             # Create datetime index on comments datetime
             g.db.blog_comments.create_index("datetime", datetime_field=True)
             # Create index for parent_post field (heavily used for finding comments for a post)

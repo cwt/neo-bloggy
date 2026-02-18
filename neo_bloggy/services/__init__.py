@@ -128,10 +128,20 @@ class PostService:
         publisher_users = get_publisher_users(db)
         skip = (page - 1) * per_page
 
-        posts = Post.find_published_posts(publisher_users)[
-            skip : skip + per_page
-        ]
-        total_posts = Post.count_documents({"author": {"$in": publisher_users}})
+        # Exclude drafts from public view
+        posts = Post.find_many(
+            {
+                "author": {"$in": publisher_users},
+                "status": {"$ne": Post.STATUS_DRAFT},
+            },
+            sort=("datetime", -1),
+        )[skip : skip + per_page]
+        total_posts = Post.count_documents(
+            {
+                "author": {"$in": publisher_users},
+                "status": {"$ne": Post.STATUS_DRAFT},
+            }
+        )
 
         result = render_template(
             "index.html",
@@ -159,10 +169,15 @@ class PostService:
 
         # Determine query based on user role
         if current_user and current_user.get("is_admin", False):
-            query = {}  # Admins see all posts
+            # Admins see all posts (including drafts)
+            query = {}
         else:
             active_users = get_active_users(db)
-            query = {"author": {"$in": active_users}}
+            # Exclude drafts from non-admin users
+            query = {
+                "author": {"$in": active_users},
+                "status": {"$ne": Post.STATUS_DRAFT},
+            }
 
         skip = (page - 1) * per_page
         posts = Post.find_many(query, sort=("datetime", -1))[
@@ -196,6 +211,14 @@ class PostService:
             return render_template("create_post.html", form=form)
 
         try:
+            # Determine if saving as draft or publishing
+            is_draft = form.save_draft.data
+
+            # For published posts, img_url is required
+            if not is_draft and not form.img_url.data:
+                flash("Image URL is required for published posts.")
+                return render_template("create_post.html", form=form)
+
             new_post = {
                 "title": form.title.data,
                 "subtitle": form.subtitle.data,
@@ -204,13 +227,24 @@ class PostService:
                 "author": current_user["name"],
                 "datetime": datetime.now().isoformat(),
                 "tags": PostService._process_tags(form.tags.data),
+                "status": (
+                    Post.STATUS_DRAFT if is_draft else Post.STATUS_PUBLISHED
+                ),
             }
             Post.create_post(new_post)
-            flash("Post Successfully Added")
+
+            if is_draft:
+                flash("Draft saved successfully.")
+            else:
+                flash("Post Successfully Added")
 
             if CACHE_ENABLED:
                 CacheService.increment_posts_cache_version()
 
+            if is_draft:
+                return redirect(
+                    url_for("auth.profile", username=current_user["name"])
+                )
             return redirect(url_for("posts.get_all_posts"))
         except Exception as err:
             flash(f"Failed to create post: {err}")
@@ -252,6 +286,16 @@ class PostService:
                     "create_post.html", form=edit_form, is_edit=True, post=post
                 )
 
+            # Determine if saving as draft or publishing
+            is_draft = edit_form.save_draft.data
+
+            # For published posts, img_url is required
+            if not is_draft and not edit_form.img_url.data:
+                flash("Image URL is required for published posts.")
+                return render_template(
+                    "create_post.html", form=edit_form, is_edit=True, post=post
+                )
+
             # Update post
             update_data = {
                 "title": edit_form.title.data,
@@ -259,6 +303,11 @@ class PostService:
                 "img_url": edit_form.img_url.data,
                 "body": edit_form.body.data,
                 "tags": PostService._process_tags(edit_form.tags.data),
+                "status": (
+                    Post.STATUS_DRAFT
+                    if is_draft
+                    else post.get("status", Post.STATUS_PUBLISHED)
+                ),
             }
             Post.update_post(post_id, update_data)
 
@@ -266,7 +315,14 @@ class PostService:
             if CACHE_ENABLED:
                 cache_key = get_cache_key("get_post_with_comments", post_id)
                 delete_cache_key(cache_storage, cache_key)
-                CacheService.increment_posts_cache_version()
+                if not is_draft:
+                    CacheService.increment_posts_cache_version()
+
+            if is_draft:
+                flash("Draft updated successfully.")
+                return redirect(
+                    url_for("auth.profile", username=current_user["name"])
+                )
 
             flash("Post Successfully Updated")
             return redirect(url_for("posts.show_post", post_id=post_id))
@@ -315,6 +371,46 @@ class PostService:
             return redirect(url_for("posts.get_all_posts"))
 
     @staticmethod
+    def delete_draft(current_user, post_id):
+        """Delete a draft post."""
+        try:
+            post = Post.find_one({"_id": post_id})
+            if not post:
+                flash("Draft not found.")
+                return redirect(
+                    url_for("auth.profile", username=current_user["name"])
+                )
+
+            # Check authorization - only author can delete their own drafts
+            is_author = post["author"] == current_user["name"]
+            is_admin = current_user.get("is_admin", False)
+
+            if not is_admin and not is_author:
+                flash("You can only delete your own drafts.")
+                return redirect(
+                    url_for("auth.profile", username=current_user["name"])
+                )
+
+            # Verify it's actually a draft
+            if post.get("status") != Post.STATUS_DRAFT:
+                flash("This is not a draft post.")
+                return redirect(
+                    url_for("auth.profile", username=current_user["name"])
+                )
+
+            Post.delete_post(post_id)
+            flash("Draft deleted successfully.")
+
+            return redirect(
+                url_for("auth.profile", username=current_user["name"])
+            )
+        except Exception as e:
+            flash(f"Failed to delete draft: {str(e)}")
+            return redirect(
+                url_for("auth.profile", username=current_user["name"])
+            )
+
+    @staticmethod
     def posts_by_tag(tag):
         """Get posts by tag."""
         current_user = get_current_user()
@@ -322,13 +418,16 @@ class PostService:
 
         db = get_db()
 
-        # Build the search filter based on user status
-        tag_filter = {"tags": {"$elemMatch": tag}}
+        # Build the search filter based on user status, excluding drafts
+        tag_filter = {
+            "tags": {"$elemMatch": tag},
+            "status": {"$ne": Post.STATUS_DRAFT},
+        }
 
         if current_user:
             if current_user.get("is_admin", False):
-                # Admins can see all posts by tag
-                search_filter = tag_filter
+                # Admins can see all posts by tag (including drafts)
+                search_filter = {"tags": {"$elemMatch": tag}}
             else:
                 # Regular logged-in users can see posts from active users by tag
                 active_users = get_active_users(db)

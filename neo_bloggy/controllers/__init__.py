@@ -7,7 +7,7 @@ from neo_bloggy.forms import (
     EditProfileForm,
     PasswordRecoveryForm,
 )
-from neo_bloggy.models import User
+from neo_bloggy.models import User, Post
 from neo_bloggy.services import PostService, CommentService
 from neo_bloggy.utils import UserValidator
 from neo_bloggy.database import get_db, get_id_for_query
@@ -119,9 +119,20 @@ class UserController:
             flash("User not found.")
             return redirect(url_for("posts.get_all_posts"))
 
-        posts = db.blog_posts.find({"author": username}).sort("datetime", -1)
+        # Get published posts (exclude drafts from "Your Posts" section)
+        posts = db.blog_posts.find(
+            {"author": username, "status": {"$ne": Post.STATUS_DRAFT}}
+        ).sort("datetime", -1)
+
+        # Get drafts separately
+        drafts = Post.find_drafts_by_author(username)
+
         return render_template(
-            "profile.html", username=username, posts=posts, user=user
+            "profile.html",
+            username=username,
+            posts=posts,
+            drafts=drafts,
+            user=user,
         )
 
     @staticmethod
@@ -228,6 +239,11 @@ class PostController:
     def delete_post(current_user, post_id):
         """Handle post deletion."""
         return PostService.delete_post(current_user, post_id)
+
+    @staticmethod
+    def delete_draft(current_user, post_id):
+        """Handle draft deletion."""
+        return PostService.delete_draft(current_user, post_id)
 
     @staticmethod
     def show_post(post_id):

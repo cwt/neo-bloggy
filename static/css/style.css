@@ -169,8 +169,9 @@ html {
      color: red;
 }
  .small-image {
-     max-height: 100px;
-     max-width: 100px
+     width: 100px;
+     height: 75px;
+     object-fit: cover;
 }
  .signup-text {
      font-size: 1rem;
@@ -417,11 +418,90 @@ pre {
 .form-group.submit-group {
     display: flex;
     justify-content: flex-end;
-    margin-top: 1.5rem; /* Add space above the submit button */
+    gap: 0.5rem; /* Add space between buttons */
+    margin-top: 1.5rem; /* Add space above the submit buttons */
 }
 
 .form-group.submit-group .btn {
-    margin-left: auto; /* Ensure button stays right-aligned */
+    margin-left: 0; /* Remove auto margin to keep buttons grouped */
+}
+
+/*------------------------------------*\
+ #PROFILE PAGE TABLES
+\*------------------------------------*/
+
+/* Ensure consistent column widths between drafts and posts tables */
+.profile-table th:nth-child(1),
+.profile-table td:nth-child(1) {
+    width: 50px; /* # column */
+}
+
+.profile-table th:nth-child(2),
+.profile-table td:nth-child(2) {
+    width: 100px; /* Image column */
+}
+
+.profile-table th:nth-child(3),
+.profile-table td:nth-child(3) {
+    width: 35%; /* Title column */
+}
+
+.profile-table th:nth-child(4),
+.profile-table td:nth-child(4) {
+    width: 25%; /* Date column */
+}
+
+.profile-table th:nth-child(5),
+.profile-table td:nth-child(5) {
+    width: 200px; /* Actions column (Edit + Delete buttons) */
+}
+
+/* Group edit and delete buttons together */
+.profile-table .btn-group-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-start;
+}
+
+.profile-table .btn-group-actions .btn {
+    margin-left: 0;
+}
+
+.profile-table th:nth-child(5) {
+    text-align: left;
+}
+
+/* Draft placeholder to match image thumbnail size */
+.draft-placeholder {
+    display: inline-block;
+    width: 100px;
+    height: 75px;
+    line-height: 75px;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 0.875rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    background-color: #f8f9fa;
+}
+
+/* Post subtitle in profile table */
+.post-subtitle {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+    font-weight: normal;
+    line-height: 1.3;
+}
+
+.title-cell a {
+    text-decoration: none;
+    color: #212529;
+    font-weight: 500;
+}
+
+.title-cell a:hover {
+    text-decoration: underline;
 }
 
 /*------------------------------------*\

@@ -162,10 +162,11 @@ def on_app_ready():
 
     UserService.ensure_first_admin_is_publisher()
 
-    # Ensure all posts have tags field
+    # Ensure all posts have tags and status fields
     from neo_bloggy.models import Post
 
     Post.ensure_tags_field()
+    Post.ensure_status_field()
 
     # Clear all existing cache to start fresh
     if CACHE_ENABLED:

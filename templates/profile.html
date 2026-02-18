@@ -31,57 +31,120 @@
          <div class="container">
          </div>
       </div>
+      
       <h2 class="your-posts-header">Your Posts</h2>
       <div class="table-responsive">
-         <table class="table table-striped table-sm">
+         <table class="table table-striped table-sm profile-table">
             <thead>
                <tr class="table-row">
                   <th>#</th>
                   <th>Image</th>
                   <th>Title</th>
                   <th>Date</th>
+                  <th>Actions</th>
                </tr>
             </thead>
             <tbody>
-               {% for post in posts %}
+               <!-- Drafts first -->
+               {% for draft in drafts %}
                <tr class="table-text">
                   <td>{{ loop.index }}.</td>
-                  <td><img src="{{ post.img_url }}" class="img-thumbnail small-image"></td>
-                  <td><a href="{{ url_for('posts.show_post', post_id=post._id) }}">{{ post.title }}</a></td>
-                  <td>{{ post | get_datetime | format_datetime }}</td>
-                  <td><a class="btn btn-outline-secondary float-start"
-                     href="{{ url_for('posts.edit_post', post_id=post._id) }}">Edit Post
-                     </a>
-                  </td>
                   <td>
-                     <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
-                        data-bs-target="#delete{{ post._id }}">
-                     Delete Post
-                     </button>
-                     <!-- MODAL -->
-                     <div class="modal fade" id="delete{{ post._id }}" tabindex="-1" role="dialog"
-                        aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered" role="document">
-                           <div class="modal-content">
-                              <div class="modal-header">
-                                 <h5 class="modal-title" id="exampleModalLongTitle">Are you sure you want to
-                                    delete this post?
-                                 </h5>
-                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
-                                 </button>
-                              </div>
-                              <div class="modal-footer">
-                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close
-                                 </button>
-                                 <a class="btn btn-outline-danger"
-                                    href="{{ url_for('posts.delete_post', post_id=post._id) }}">Delete Post
-                                 </a>
-                              </div>
-                           </div>
-                        </div>
+                     {% if draft.img_url %}
+                     <img src="{{ draft.img_url }}" class="img-thumbnail small-image" alt="{{ draft.title }}">
+                     {% else %}
+                     <span class="text-muted draft-placeholder">No image</span>
+                     {% endif %}
+                  </td>
+                  <td class="title-cell">
+                     <a href="{{ url_for('posts.edit_post', post_id=draft._id) }}">{{ draft.title }} <span class="badge bg-secondary">Draft</span></a>
+                     {% if draft.subtitle %}
+                     <div class="post-subtitle">{{ draft.subtitle }}</div>
+                     {% endif %}
+                  </td>
+                  <td>{{ draft | get_datetime | format_datetime }}</td>
+                  <td>
+                     <div class="btn-group-actions">
+                        <a class="btn btn-outline-secondary"
+                           href="{{ url_for('posts.edit_post', post_id=draft._id) }}">Edit
+                        </a>
+                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                           data-bs-target="#deleteDraft{{ draft._id }}">
+                        Delete
+                        </button>
                      </div>
                   </td>
                </tr>
+               <!-- Modal for draft delete -->
+               <div class="modal fade" id="deleteDraft{{ draft._id }}" tabindex="-1" role="dialog"
+                  aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered" role="document">
+                     <div class="modal-content">
+                        <div class="modal-header">
+                           <h5 class="modal-title" id="exampleModalLongTitle">Are you sure you want to
+                              delete this draft?
+                           </h5>
+                           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                           </button>
+                        </div>
+                        <div class="modal-footer">
+                           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close
+                           </button>
+                           <a class="btn btn-outline-danger"
+                              href="{{ url_for('posts.delete_draft', post_id=draft._id) }}">Delete
+                           </a>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               {% endfor %}
+               
+               <!-- Published posts -->
+               {% for post in posts %}
+               <tr class="table-text">
+                  <td>{{ loop.index + drafts|length }}.</td>
+                  <td><img src="{{ post.img_url }}" class="img-thumbnail small-image" alt="{{ post.title }}"></td>
+                  <td class="title-cell">
+                     <a href="{{ url_for('posts.show_post', post_id=post._id) }}">{{ post.title }}</a>
+                     {% if post.subtitle %}
+                     <div class="post-subtitle">{{ post.subtitle }}</div>
+                     {% endif %}
+                  </td>
+                  <td>{{ post | get_datetime | format_datetime }}</td>
+                  <td>
+                     <div class="btn-group-actions">
+                        <a class="btn btn-outline-secondary"
+                           href="{{ url_for('posts.edit_post', post_id=post._id) }}">Edit
+                        </a>
+                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                           data-bs-target="#delete{{ post._id }}">
+                        Delete
+                        </button>
+                     </div>
+                  </td>
+               </tr>
+               <!-- Modal for post delete -->
+               <div class="modal fade" id="delete{{ post._id }}" tabindex="-1" role="dialog"
+                  aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered" role="document">
+                     <div class="modal-content">
+                        <div class="modal-header">
+                           <h5 class="modal-title" id="exampleModalLongTitle">Are you sure you want to
+                              delete this post?
+                           </h5>
+                           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                           </button>
+                        </div>
+                        <div class="modal-footer">
+                           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close
+                           </button>
+                           <a class="btn btn-outline-danger"
+                              href="{{ url_for('posts.delete_post', post_id=post._id) }}">Delete
+                           </a>
+                        </div>
+                     </div>
+                  </div>
+               </div>
                {% endfor %}
             </tbody>
          </table>

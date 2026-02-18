@@ -38,6 +38,12 @@ def delete_post(current_user, post_id):
     return PostController.delete_post(current_user, post_id)
 
 
+@posts_bp.route("/delete-draft/<post_id>")
+@login_required
+def delete_draft(current_user, post_id):
+    return PostController.delete_draft(current_user, post_id)
+
+
 @posts_bp.route("/delete_comment/<comment_id>")
 @login_required
 def delete_comment(current_user, comment_id):

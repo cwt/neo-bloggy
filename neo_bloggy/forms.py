@@ -63,12 +63,13 @@ class LoginForm(FlaskForm):
 class CreatePostForm(FlaskForm):
     title = StringField("Title", validators=[DataRequired()])
     subtitle = StringField("Subtitle", validators=[DataRequired()])
-    img_url = StringField("Image URL", validators=[DataRequired()])
+    img_url = StringField("Image URL", validators=[Optional()])
     body = TextAreaField(
         "Content (Markdown supported)", validators=[DataRequired()]
     )
     tags = StringField("Tags (comma-separated)", validators=[Optional()])
     submit = SubmitField("Publish")
+    save_draft = SubmitField("Save as Draft")
 
 
 # ----- COMMENT FORM ----- #

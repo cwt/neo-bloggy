@@ -92,6 +92,10 @@ class Post:
 
     collection = "blog_posts"
 
+    # Post status constants
+    STATUS_DRAFT = "draft"
+    STATUS_PUBLISHED = "published"
+
     @classmethod
     def find_one(cls, query):
         return _get_collection(cls.collection).find_one(query)
@@ -141,6 +145,14 @@ class Post:
         return cls.find_many({"img_url": img_url})
 
     @classmethod
+    def find_drafts_by_author(cls, author):
+        """Find draft posts by author."""
+        return cls.find_many(
+            {"author": author, "status": cls.STATUS_DRAFT},
+            sort=("datetime", -1),
+        )
+
+    @classmethod
     def create_post(cls, post_data):
         """Create a new post."""
         return _get_collection(cls.collection).insert_one(post_data)
@@ -156,6 +168,29 @@ class Post:
     def delete_post(cls, post_id):
         """Delete a post."""
         return _get_collection(cls.collection).delete_one({"_id": post_id})
+
+    @classmethod
+    def ensure_status_field(cls):
+        """Ensure all posts have a status field (default to published for backward compatibility)."""
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        posts_without_status = cls.find_many({"status": {"$exists": False}})
+        collection = _get_collection(cls.collection)
+
+        updated_count = 0
+        for post in posts_without_status:
+            try:
+                collection.update_one(
+                    {"_id": post["_id"]},
+                    {"$set": {"status": cls.STATUS_PUBLISHED}},
+                )
+                updated_count += 1
+            except Exception as e:
+                logger.error("Error updating post %s: %s", post["_id"], e)
+
+        return updated_count
 
     @classmethod
     def ensure_tags_field(cls):

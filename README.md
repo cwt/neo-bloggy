@@ -35,7 +35,7 @@ We've significantly modified this project to work with NeoSQLite, demonstrating 
 ### Back-End Technologies
 - Python 3.x
 - Flask 3.1
-- NeoSQLite 1.2.0 or newer
+- NeoSQLite 1.2.3 or newer
 - Flask-Bootstrap5 2.5.0
 - Flask-WTF 1.2.2
 
@@ -47,7 +47,7 @@ We've significantly modified this project to work with NeoSQLite, demonstrating 
 - **Comment System**: Users can comment on posts with Markdown support
 - **Search Functionality**: Full-text search across posts using NeoSQLite's FTS capabilities, with optional support for Asian languages (Chinese, Japanese, Korean, Thai, etc.) through custom FTS5 tokenizers
 - **File Uploads**: Image upload functionality with automatic WebP conversion for posts
-- **Responsive Design**: Mobile-friendly interface
+- **Responsive Design**: Mobile-friendly interface with adaptive action buttons in user profiles
 - **Admin Panel**: Administrators can manage users and content
 - **Security Features**: XSS protection, input validation, and secure password handling
 - **Caching**: Optional caching mechanism for improved performance
@@ -82,7 +82,7 @@ Neo Bloggy includes a comprehensive draft system for content creators:
 
 1. **Creating Drafts**:
    - Click "Save as Draft" when creating or editing a post to save it without publishing
-   - Drafts are visible only to the author and administrators
+    - Drafts are visible only to the author on their profile page
    - Image URL is optional for drafts (required for published posts)
 
 2. **Managing Drafts**:

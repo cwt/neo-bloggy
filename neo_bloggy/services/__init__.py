@@ -168,11 +168,14 @@ class PostService:
         db = get_db()
 
         # Determine query based on user role
+        active_users = get_active_users(db)
         if current_user and current_user.get("is_admin", False):
-            # Admins see all posts (including drafts)
-            query = {}
+            # Admins see all published posts from active users (excluding drafts)
+            query = {
+                "author": {"$in": active_users},
+                "status": {"$ne": Post.STATUS_DRAFT},
+            }
         else:
-            active_users = get_active_users(db)
             # Exclude drafts from non-admin users
             query = {
                 "author": {"$in": active_users},

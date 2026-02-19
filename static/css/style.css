@@ -461,10 +461,11 @@ pre {
     display: flex;
     gap: 0.5rem;
     justify-content: flex-start;
+    flex-wrap: wrap;
 }
 
 .profile-table .btn-group-actions .btn {
-    margin-left: 0;
+    flex: 1;
 }
 
 .profile-table th:nth-child(5) {

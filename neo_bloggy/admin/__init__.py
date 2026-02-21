@@ -6,6 +6,7 @@ from neo_bloggy.database import get_db, get_id_for_query
 from neo_bloggy.auth import admin_required
 from werkzeug.security import generate_password_hash
 from neo_bloggy.models import User, Post
+from neo_bloggy.config import config
 
 
 @admin_required
@@ -16,7 +17,11 @@ def admin_panel(current_user):
     # Get all users (except the current admin)
     users = User.find_many({"name": {"$ne": current_user["name"]}})
 
-    return render_template("admin.html", users=users)
+    return render_template(
+        "admin.html",
+        users=users,
+        page_title=f"Admin Panel - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+    )
 
 
 @admin_required
@@ -152,7 +157,10 @@ def unpublished_posts(current_user):
             post_authors[post["author"]] = author
 
     return render_template(
-        "unpublished_posts.html", posts=posts, post_authors=post_authors
+        "unpublished_posts.html",
+        posts=posts,
+        post_authors=post_authors,
+        page_title=f"Unpublished Posts - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
     )
 
 
@@ -169,7 +177,11 @@ def recover_password():
         user = UserValidator.validate_password_recovery(form)
 
         if user is None:
-            return render_template("recover_password.html", form=form)
+            return render_template(
+                "recover_password.html",
+                form=form,
+                page_title=f"Reset Your Password - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+            )
 
         # Update password
         new_password_hash = generate_password_hash(
@@ -186,4 +198,8 @@ def recover_password():
         )
         return redirect(url_for("auth.login"))
 
-    return render_template("recover_password.html", form=form)
+    return render_template(
+        "recover_password.html",
+        form=form,
+        page_title=f"Reset Your Password - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+    )

@@ -12,6 +12,7 @@ from neo_bloggy.services import PostService, CommentService
 from neo_bloggy.utils import UserValidator
 from neo_bloggy.database import get_db, get_id_for_query
 from werkzeug.security import generate_password_hash
+from neo_bloggy.config import config
 
 
 class UserController:
@@ -79,8 +80,16 @@ class UserController:
                     )
                 else:
                     flash(f"Registration failed: {str(e)}")
-                return render_template("register.html", form=form)
-        return render_template("register.html", form=form)
+                return render_template(
+                    "register.html",
+                    form=form,
+                    page_title=f"Sign Up - {config.get('app', {}).get('site_title', 'Neo Bloggy')}: Start Your Blog",
+                )
+        return render_template(
+            "register.html",
+            form=form,
+            page_title=f"Sign Up - {config.get('app', {}).get('site_title', 'Neo Bloggy')}: Start Your Blog",
+        )
 
     @staticmethod
     def login():
@@ -102,8 +111,16 @@ class UserController:
                     )
             except Exception as e:
                 flash(f"Login failed: {str(e)}")
-                return render_template("login.html", form=form)
-        return render_template("login.html", form=form)
+                return render_template(
+                    "login.html",
+                    form=form,
+                    page_title=f"Sign In - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+                )
+        return render_template(
+            "login.html",
+            form=form,
+            page_title=f"Sign In - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+        )
 
     @staticmethod
     def profile(current_user, username):
@@ -133,6 +150,7 @@ class UserController:
             posts=posts,
             drafts=drafts,
             user=user,
+            page_title=f"{username}'s Profile - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
         )
 
     @staticmethod
@@ -157,7 +175,11 @@ class UserController:
         if form.validate_on_submit():
             # Validate profile update data
             if not UserValidator.validate_profile_update(form, current_user):
-                return render_template("edit_profile.html", form=form)
+                return render_template(
+                    "edit_profile.html",
+                    form=form,
+                    page_title=f"Edit Your Profile - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+                )
 
             db = get_db()
             update_data = {
@@ -191,7 +213,11 @@ class UserController:
                 "security_question", ""
             )
 
-        return render_template("edit_profile.html", form=form)
+        return render_template(
+            "edit_profile.html",
+            form=form,
+            page_title=f"Edit Your Profile - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+        )
 
     @staticmethod
     def logout():
@@ -270,6 +296,7 @@ class AdminController:
         return render_template(
             "admin.html",
             users=User.find_many({"name": {"$ne": current_user["name"]}}),
+            page_title=f"Admin Panel - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
         )
 
     @staticmethod
@@ -383,7 +410,11 @@ class AdminController:
             user = UserValidator.validate_password_recovery(form)
 
             if user is None:
-                return render_template("recover_password.html", form=form)
+                return render_template(
+                    "recover_password.html",
+                    form=form,
+                    page_title=f"Reset Your Password - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+                )
 
             # Update password
             new_password_hash = generate_password_hash(
@@ -400,4 +431,8 @@ class AdminController:
             )
             return redirect(url_for("auth.login"))
 
-        return render_template("recover_password.html", form=form)
+        return render_template(
+            "recover_password.html",
+            form=form,
+            page_title=f"Reset Your Password - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+        )

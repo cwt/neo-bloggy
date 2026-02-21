@@ -2,7 +2,7 @@
 
 from flask import render_template, send_from_directory, request
 from neo_bloggy.database import get_db
-from neo_bloggy.config import BASE_URL
+from neo_bloggy.config import BASE_URL, config
 from datetime import datetime
 
 
@@ -96,12 +96,30 @@ def register_error_handlers(app):
 
     @app.errorhandler(404)
     def page_not_found_404(e):
-        return render_template("404.html"), 404
+        return (
+            render_template(
+                "404.html",
+                page_title=f"Page Not Found - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+            ),
+            404,
+        )
 
     @app.errorhandler(403)
     def page_not_found_403(e):
-        return render_template("403.html"), 403
+        return (
+            render_template(
+                "403.html",
+                page_title=f"Access Denied - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+            ),
+            403,
+        )
 
     @app.errorhandler(500)
     def page_not_found_500(e):
-        return render_template("500.html"), 500
+        return (
+            render_template(
+                "500.html",
+                page_title=f"Server Error - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+            ),
+            500,
+        )

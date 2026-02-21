@@ -7,26 +7,37 @@
 
       {% if post %}
       <!-- Post-specific meta tags -->
-      <meta name="description" content="{{ post.subtitle or post.title }}">
+      <meta name="description" content="{{ post.title }}: {{ post.subtitle }}">
       <meta name="author" content="{{ post.author }}">
-      <meta name="keywords" content="{{ post.title }}, {{ post.author }}, blog, article">
+      <meta name="keywords" content="{{ post.title }}, {{ post.author }}, blog, article{% if post.tags %}, {{ post.tags | join(', ') }}{% endif %}">
 
       <!-- Open Graph / Facebook -->
       <meta property="og:type" content="article">
       <meta property="og:url" content="{{ get_absolute_url('posts.show_post', post_id=post._id) }}">
       <meta property="og:title" content="{{ post.title }}">
-      <meta property="og:description" content="{{ post.subtitle or post.title[:160] }}">
+      <meta property="og:description" content="{{ post.title }}: {{ post.subtitle }}">
       {% if post.img_url %}
       <meta property="og:image" content="{{ post.img_url.rsplit('.', 1)[0] + '.jpg' if post.img_url.endswith('.webp') else post.img_url }}">
+      {% endif %}
+      {% if post.tags %}
+      {% for tag in post.tags %}
+      <meta property="article:tag" content="{{ tag }}">
+      {% endfor %}
+      {% endif %}
+      {% if post.datetime %}
+      <meta property="article:published_time" content="{{ post.datetime }}">
       {% endif %}
 
       <!-- Twitter -->
       <meta property="twitter:card" content="summary_large_image">
       <meta property="twitter:url" content="{{ get_absolute_url('posts.show_post', post_id=post._id) }}">
       <meta property="twitter:title" content="{{ post.title }}">
-      <meta property="twitter:description" content="{{ post.subtitle or post.title[:160] }}">
+      <meta property="twitter:description" content="{{ post.title }}: {{ post.subtitle }}">
       {% if post.img_url %}
       <meta property="twitter:image" content="{{ post.img_url.rsplit('.', 1)[0] + '.jpg' if post.img_url.endswith('.webp') else post.img_url }}">
+      {% endif %}
+      {% if post.tags %}
+      <meta name="twitter:keywords" content="{{ post.tags | join(', ') }}">
       {% endif %}
 
       <!-- Article schema -->
@@ -40,9 +51,12 @@
           "name": "{{ post.author }}"
         },
         "datePublished": "{{ post.datetime or post.date }}",
-        "description": "{{ post.subtitle or post.title }}",
+        "description": "{{ post.title }}: {{ post.subtitle }}",
         {% if post.img_url %}
         "image": "{{ post.img_url.rsplit('.', 1)[0] + '.jpg' if post.img_url.endswith('.webp') else post.img_url }}",
+        {% endif %}
+        {% if post.tags and post.tags|length > 0 %}
+        "keywords": [{{ post.tags | map('tojson') | join(', ') }}],
         {% endif %}
         "publisher": {
           "@type": "Organization",
@@ -60,23 +74,50 @@
       <!-- Default meta tags -->
       <meta name="description" content="{{ site_description }}">
       <meta name="author" content="{{ site_author }}">
-      <meta name="keywords" content="blog, articles, {{ site_title }}">
+      <meta name="keywords" content="blog, articles, {{ site_title }}{% if tag %}, {{ tag }}{% endif %}{% if search_query %}, {{ search_query }}{% endif %}">
 
       <!-- Open Graph / Facebook -->
       <meta property="og:type" content="website">
       <meta property="og:url" content="{{ get_canonical_url() }}">
-      <meta property="og:title" content="{{ site_title }}">
+      <meta property="og:title" content="{{ page_title if page_title else site_title }}">
       <meta property="og:description" content="{{ site_description }}">
       <meta property="og:image" content="{{ get_absolute_url('static', filename='img/logo.png') }}">
 
       <!-- Twitter -->
       <meta property="twitter:card" content="summary_large_image">
       <meta property="twitter:url" content="{{ get_canonical_url() }}">
-      <meta property="twitter:title" content="{{ site_title }}">
+      <meta property="twitter:title" content="{{ page_title if page_title else site_title }}">
       <meta property="twitter:description" content="{{ site_description }}">
       <meta property="twitter:image" content="{{ get_absolute_url('static', filename='img/logo.png') }}">
 
-      <title>{{ site_title }}</title>
+      <!-- WebSite schema for non-post pages -->
+      <script type="application/ld+json" nonce="{{ csp_nonce }}">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "{{ site_title }}",
+        "url": "{{ get_canonical_url() }}",
+        "description": "{{ site_description }}",
+        "publisher": {
+          "@type": "Organization",
+          "name": "{{ site_title }}",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "{{ get_absolute_url('static', filename='img/logo.png') }}"
+          }
+        }
+        {% if tag %}
+        ,
+        "potentialAction": {
+          "@type": "ReadAction",
+          "target": ["{{ get_canonical_url() }}"],
+          "query-input": "required name=search_term_string"
+        }
+        {% endif %}
+      }
+      </script>
+
+      <title>{{ page_title if page_title else site_title }}</title>
       {% endif %}
 
       <!-- Canonical URL -->

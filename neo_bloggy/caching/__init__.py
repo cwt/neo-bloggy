@@ -98,6 +98,7 @@ def preload_cache():
                             "has_next": has_next,
                             "has_prev": has_prev,
                         },
+                        page_title=f"Home - {config.get('app', {}).get('site_title', 'Neo Bloggy')}: Where Good Ideas Find You",
                     )
 
                 if isinstance(cache_storage, FileCache):

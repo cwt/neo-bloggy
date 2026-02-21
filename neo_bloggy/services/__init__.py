@@ -149,6 +149,7 @@ class PostService:
             pagination=PostService._build_pagination(
                 page, per_page, total_posts
             ),
+            page_title=f"Home - {config.get('app', {}).get('site_title', 'Neo Bloggy')}: Where Good Ideas Find You",
         )
 
         # Store in cache
@@ -196,6 +197,7 @@ class PostService:
                 pagination=PostService._build_pagination(
                     page, per_page, total_posts
                 ),
+                page_title=f"Home - {config.get('app', {}).get('site_title', 'Neo Bloggy')}: Where Good Ideas Find You",
             )
         )
 
@@ -211,7 +213,11 @@ class PostService:
         """Create a new post."""
         form = CreatePostForm()
         if not form.validate_on_submit():
-            return render_template("create_post.html", form=form)
+            return render_template(
+                "create_post.html",
+                form=form,
+                page_title=f"Create New Post - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+            )
 
         try:
             # Determine if saving as draft or publishing
@@ -220,7 +226,11 @@ class PostService:
             # For published posts, img_url is required
             if not is_draft and not form.img_url.data:
                 flash("Image URL is required for published posts.")
-                return render_template("create_post.html", form=form)
+                return render_template(
+                    "create_post.html",
+                    form=form,
+                    page_title=f"Create New Post - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+                )
 
             new_post = {
                 "title": form.title.data,
@@ -251,7 +261,11 @@ class PostService:
             return redirect(url_for("posts.get_all_posts"))
         except Exception as err:
             flash(f"Failed to create post: {err}")
-            return render_template("create_post.html", form=form)
+            return render_template(
+                "create_post.html",
+                form=form,
+                page_title=f"Create New Post - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
+            )
 
     @staticmethod
     def edit_post(current_user, post_id):
@@ -286,7 +300,11 @@ class PostService:
 
             if not edit_form.validate_on_submit():
                 return render_template(
-                    "create_post.html", form=edit_form, is_edit=True, post=post
+                    "create_post.html",
+                    form=edit_form,
+                    is_edit=True,
+                    post=post,
+                    page_title=f"Edit Post: {post['title']} - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
                 )
 
             # Determine if saving as draft or publishing
@@ -296,7 +314,11 @@ class PostService:
             if not is_draft and not edit_form.img_url.data:
                 flash("Image URL is required for published posts.")
                 return render_template(
-                    "create_post.html", form=edit_form, is_edit=True, post=post
+                    "create_post.html",
+                    form=edit_form,
+                    is_edit=True,
+                    post=post,
+                    page_title=f"Edit Post: {post['title']} - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
                 )
 
             # Update post
@@ -469,6 +491,7 @@ class PostService:
                 user=current_user,
                 tag=tag,
                 related_tags=related_tags,
+                page_title=f"Posts tagged: {tag} - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
             )
         )
         # Don't cache tag results as they may change frequently

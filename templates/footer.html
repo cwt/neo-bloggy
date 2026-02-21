@@ -8,7 +8,7 @@
                   {% if post %}
                   <a href="https://x.com/intent/post?url={{ get_canonical_url() }}&text={{ post.title }}" target="_blank" rel="noopener noreferrer" aria-label="Share on X">
                   {% else %}
-                  <a href="https://x.com/intent/post?url={{ get_absolute_url('posts.get_all_posts') }}&text=Check out Neo Bloggy!" target="_blank" rel="noopener noreferrer" aria-label="Share Neo Bloggy on X">
+                  <a href="https://x.com/intent/post?url={{ get_absolute_url('posts.get_all_posts') }}&text=Check out {{ site_title }}!" target="_blank" rel="noopener noreferrer" aria-label="Share {{ site_title }} on X">
                   {% endif %}
                   <span class="fa-stack fa-lg">
                   <i class="fas fa-circle fa-stack-2x"></i>
@@ -20,7 +20,7 @@
                   {% if post %}
                   <a href="https://www.facebook.com/sharer/sharer.php?u={{ get_canonical_url() }}" target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook">
                   {% else %}
-                  <a href="https://www.facebook.com/sharer/sharer.php?u={{ get_absolute_url('posts.get_all_posts') }}" target="_blank" rel="noopener noreferrer" aria-label="Share Neo Bloggy on Facebook">
+                  <a href="https://www.facebook.com/sharer/sharer.php?u={{ get_absolute_url('posts.get_all_posts') }}" target="_blank" rel="noopener noreferrer" aria-label="Share {{ site_title }} on Facebook">
                   {% endif %}
                   <span class="fa-stack fa-lg">
                   <i class="fas fa-circle fa-stack-2x"></i>
@@ -39,7 +39,7 @@
             </ul>
             <!-- Quote -->
             <p class="copyright text-muted">
-               Copyright &copy; Neo Bloggy <script nonce="{{ csp_nonce }}">document.write(new Date().getFullYear());</script>
+               Copyright &copy; {{ site_title }} <script nonce="{{ csp_nonce }}">document.write(new Date().getFullYear());</script>
                | <a href="/sitemap.xml">Sitemap</a>
             </p>
          </div>

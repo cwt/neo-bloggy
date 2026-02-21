@@ -18,6 +18,7 @@ from flask import (
     flash,
 )
 from PIL import Image
+from neo_bloggy.config import config
 from werkzeug.utils import secure_filename
 from neosqlite import gridfs as gridfs_errors
 
@@ -565,6 +566,7 @@ def upload_image(current_user):
         current_page=page,
         total_pages=total_pages,
         per_page=per_page,
+        page_title=f"Upload Image - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
     )
 
 

@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 from flask import make_response, redirect, render_template, request, url_for
 
 from neo_bloggy.auth import get_current_user
-from neo_bloggy.config import MAX_POSTS_PER_PAGE, POSTS_PER_PAGE
+from neo_bloggy.config import MAX_POSTS_PER_PAGE, POSTS_PER_PAGE, config
 from neo_bloggy.database import get_active_users, get_db, get_publisher_users
 from neo_bloggy.utils import InputValidator
 
@@ -68,6 +68,7 @@ def search():
             search_query=query,
             user=current_user,
             pagination=pagination,
+            page_title=f"Search: {query} - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
         )
     )
 

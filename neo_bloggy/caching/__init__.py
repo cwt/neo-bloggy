@@ -48,27 +48,26 @@ def preload_cache():
             from flask import current_app
 
             with current_app.app_context():
-                from neo_bloggy.database import get_db, get_publisher_users
-
-                db = get_db()
+                from neo_bloggy.database import get_publisher_users
 
                 # For anonymous users, get posts from publisher users (as in get_all_posts)
-                publisher_users = get_publisher_users(db)
+                publisher_users = get_publisher_users()
 
                 # Calculate total posts for pagination info
                 from neo_bloggy.config import POSTS_PER_PAGE
+                from neo_bloggy.models import Post
 
-                total_posts = db.blog_posts.count_documents(
+                total_posts = Post.count_documents(
                     {"author": {"$in": publisher_users}}
                 )
 
                 # Only cache the first page to avoid loading all posts at startup
                 per_page = POSTS_PER_PAGE  # Use the configured default
-                posts = list(
-                    db.blog_posts.find({"author": {"$in": publisher_users}})
-                    .sort("datetime", -1)
-                    .skip(0)
-                    .limit(per_page)
+                posts = Post.find_many(
+                    {"author": {"$in": publisher_users}},
+                    sort=("datetime", -1),
+                    skip=0,
+                    limit=per_page,
                 )
 
                 # Pre-render the template with posts to populate cache (first page only)

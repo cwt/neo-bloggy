@@ -2,7 +2,7 @@
 
 from flask import g, session
 from functools import wraps
-from neo_bloggy.database import get_db
+from neo_bloggy.models import User
 
 
 def get_current_user():
@@ -14,8 +14,7 @@ def get_current_user():
         return None
 
     try:
-        db = get_db()
-        user = db.users.find_one({"name": session["user"]})
+        user = User.find_by_name(session["user"])
         # Check if user exists and is active
         if user and user.get("is_active", True):
             return user

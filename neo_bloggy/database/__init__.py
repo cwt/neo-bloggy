@@ -162,9 +162,11 @@ def get_objectid_for_gridfs(id_value):
         raise ValueError(f"Invalid ID format for GridFS: {id_value}")
 
 
-def get_active_users(db):
+def get_active_users():
     """Get list of active users from the database."""
-    return [user["name"] for user in db.users.find({"is_active": True})]
+    from neo_bloggy.models import User
+
+    return [user["name"] for user in User.find_active_users()]
 
 
 def filter_active_user_content(
@@ -174,6 +176,8 @@ def filter_active_user_content(
     return [item for item in content_list if item[author_field] in active_users]
 
 
-def get_publisher_users(db):
+def get_publisher_users():
     """Get list of publisher users from the database."""
-    return [user["name"] for user in db.users.find({"is_publisher": True})]
+    from neo_bloggy.models import User
+
+    return [user["name"] for user in User.find_publisher_users()]

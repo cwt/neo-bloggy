@@ -8,7 +8,7 @@ import re
 from PIL import Image
 from flask import flash, redirect, url_for, request
 from werkzeug.security import check_password_hash
-from neo_bloggy.database import get_db
+from neo_bloggy.models import User
 
 
 def allowed_file(filename):
@@ -252,11 +252,8 @@ class UserValidator:
     @staticmethod
     def validate_registration(form):
         """Validate user registration data."""
-        db = get_db()
-        users = db.users
-
         # check if email already exists in database
-        existing_user = users.find_one({"email": form.email.data})
+        existing_user = User.find_by_email(form.email.data)
 
         if existing_user:
             flash("You've already signed up with that email, log in instead!")
@@ -267,13 +264,11 @@ class UserValidator:
     @staticmethod
     def validate_login(form):
         """Validate user login credentials."""
-        db = get_db()
-        users = db.users
         email = form.email.data
         password = form.password.data
 
         # check if email already exists
-        existing_user = users.find_one({"email": email})
+        existing_user = User.find_by_email(email)
         # if email doesn't exist or password incorrect
         if not existing_user:
             flash("That email or password does not exist, please try again.")
@@ -293,10 +288,9 @@ class UserValidator:
     @staticmethod
     def validate_profile_update(form, current_user):
         """Validate profile update data."""
-        db = get_db()
         # Check if the new email already exists (excluding current user)
         if form.email.data != current_user["email"]:
-            if db.users.find_one(
+            if User.find_one(
                 {
                     "email": form.email.data,
                     "_id": {
@@ -311,11 +305,8 @@ class UserValidator:
     @staticmethod
     def validate_password_recovery(form):
         """Validate password recovery data."""
-        db = get_db()
-        users = db.users
-
         # check if email exists in database
-        user = users.find_one({"email": form.email.data})
+        user = User.find_by_email(form.email.data)
 
         if not user:
             flash("No account found with that email address.")

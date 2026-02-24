@@ -122,10 +122,7 @@ class PostService:
                 return PostService._apply_cache_headers(response)
 
         # Generate and cache result
-        from neo_bloggy.database import get_db
-
-        db = get_db()
-        publisher_users = get_publisher_users(db)
+        publisher_users = get_publisher_users()
         skip = (page - 1) * per_page
 
         # Exclude drafts from public view
@@ -164,12 +161,9 @@ class PostService:
     @staticmethod
     def _get_fresh_posts(page, per_page, current_user):
         """Get posts directly from database for logged-in users."""
-        from neo_bloggy.database import get_db
-
-        db = get_db()
 
         # Determine query based on user role
-        active_users = get_active_users(db)
+        active_users = get_active_users()
         if current_user and current_user.get("is_admin", False):
             # Admins see all published posts from active users (excluding drafts)
             query = {
@@ -439,9 +433,6 @@ class PostService:
     def posts_by_tag(tag):
         """Get posts by tag."""
         current_user = get_current_user()
-        from neo_bloggy.database import get_db
-
-        db = get_db()
 
         # Build the search filter based on user status, excluding drafts
         tag_filter = {
@@ -455,13 +446,13 @@ class PostService:
                 search_filter = {"tags": {"$elemMatch": tag}}
             else:
                 # Regular logged-in users can see posts from active users by tag
-                active_users = get_active_users(db)
+                active_users = get_active_users()
                 search_filter = {
                     "$and": [tag_filter, {"author": {"$in": active_users}}]
                 }
         else:
             # Anonymous users can only see posts from publisher users
-            publisher_users = get_publisher_users(db)
+            publisher_users = get_publisher_users()
             search_filter = {
                 "$and": [tag_filter, {"author": {"$in": publisher_users}}]
             }
@@ -554,10 +545,7 @@ class CommentService:
                     return redirect(url_for("posts.get_all_posts"))
 
             # Filter comments to only show those from active users
-            from neo_bloggy.database import get_db
-
-            db = get_db()
-            active_users = get_active_users(db)
+            active_users = get_active_users()
             if hasattr(requested_post_comments, "__iter__"):
                 requested_post_comments = (
                     CommentService.filter_active_user_content(

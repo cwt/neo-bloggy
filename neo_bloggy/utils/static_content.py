@@ -1,7 +1,7 @@
 """Static content handlers module for Neo Bloggy application."""
 
 from flask import render_template, send_from_directory, request
-from neo_bloggy.database import get_db
+from neo_bloggy.models import Post
 from neo_bloggy.config import BASE_URL, config
 from datetime import datetime
 
@@ -12,8 +12,7 @@ def register_static_routes(app):
     @app.route("/sitemap.xml")
     def sitemap():
         """Generate a sitemap for the blog."""
-        db = get_db()
-        posts = list(db.blog_posts.find().sort("datetime", -1))
+        posts = Post.find_all_posts()
 
         # Get the current date for the sitemap
         current_date = datetime.utcnow().strftime("%Y-%m-%d")

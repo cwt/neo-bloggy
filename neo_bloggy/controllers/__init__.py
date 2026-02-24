@@ -10,7 +10,7 @@ from neo_bloggy.forms import (
 from neo_bloggy.models import User, Post
 from neo_bloggy.services import PostService, CommentService
 from neo_bloggy.utils import UserValidator
-from neo_bloggy.database import get_db, get_id_for_query
+from neo_bloggy.database import get_id_for_query
 from werkzeug.security import generate_password_hash
 from neo_bloggy.config import config
 
@@ -27,9 +27,6 @@ class UserController:
                 # Validate registration data
                 if not UserValidator.validate_registration(form):
                     return redirect(url_for("posts.get_all_posts"))
-
-                db = get_db()
-                users = db.users
 
                 # hash and salt the password
                 hash_and_salted_password = generate_password_hash(
@@ -50,16 +47,14 @@ class UserController:
                     "is_publisher": False,  # Default to non-publisher
                 }
                 # insert new_user into the database
-                insert_result = users.insert_one(new_user)
+                insert_result = User.create_user(new_user)
                 new_user_id = insert_result.inserted_id
 
                 # Check if there are any admins, if not, make this user an admin
-                admin_count = users.count_documents({"is_admin": True})
+                admin_count = User.count_documents({"is_admin": True})
                 if admin_count == 0:
-                    users.update_one(
-                        {"_id": new_user_id},
-                        {"$set": {"is_admin": True, "is_publisher": True}},
-                    )
+                    User.update_user_admin_status(new_user_id, True)
+                    User.update_user_publisher_status(new_user_id, True)
                     flash(
                         "You are the first user. You have been made an administrator."
                     )
@@ -130,16 +125,16 @@ class UserController:
             flash("You can only view your own profile.")
             return redirect(url_for("posts.get_all_posts"))
 
-        db = get_db()
-        user = db.users.find_one({"name": username})
+        user = User.find_by_name(username)
         if not user:
             flash("User not found.")
             return redirect(url_for("posts.get_all_posts"))
 
         # Get published posts (exclude drafts from "Your Posts" section)
-        posts = db.blog_posts.find(
-            {"author": username, "status": {"$ne": Post.STATUS_DRAFT}}
-        ).sort("datetime", -1)
+        posts = Post.find_many(
+            {"author": username, "status": {"$ne": Post.STATUS_DRAFT}},
+            sort=("datetime", -1),
+        )
 
         # Get drafts separately
         drafts = Post.find_drafts_by_author(username)
@@ -181,7 +176,6 @@ class UserController:
                     page_title=f"Edit Your Profile - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
                 )
 
-            db = get_db()
             update_data = {
                 "email": form.email.data,
                 "security_question": form.security_question.data,
@@ -197,10 +191,7 @@ class UserController:
                 )
 
             # Update the user's profile in the database
-            db.users.update_one(
-                {"_id": current_user["_id"]},
-                {"$set": update_data},
-            )
+            User.update_profile(current_user["_id"], update_data)
 
             session.permanent = True  # Make sure session remains permanent
             flash("Profile updated successfully!")
@@ -420,11 +411,7 @@ class AdminController:
             new_password_hash = generate_password_hash(
                 form.password.data, method="pbkdf2:sha256", salt_length=8
             )
-            db = get_db()
-            users = db.users
-            users.update_one(
-                {"_id": user["_id"]}, {"$set": {"password": new_password_hash}}
-            )
+            User.update_profile(user["_id"], {"password": new_password_hash})
 
             flash(
                 "Password successfully reset. You can now log in with your new password."

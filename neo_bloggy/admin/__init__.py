@@ -187,11 +187,7 @@ def recover_password():
         new_password_hash = generate_password_hash(
             form.password.data, method="pbkdf2:sha256", salt_length=8
         )
-        db = get_db()
-        users = db.users
-        users.update_one(
-            {"_id": user["_id"]}, {"$set": {"password": new_password_hash}}
-        )
+        User.update_profile(user["_id"], {"password": new_password_hash})
 
         flash(
             "Password successfully reset. You can now log in with your new password."

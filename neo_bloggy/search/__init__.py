@@ -7,7 +7,8 @@ from flask import make_response, redirect, render_template, request, url_for
 
 from neo_bloggy.auth import get_current_user
 from neo_bloggy.config import MAX_POSTS_PER_PAGE, POSTS_PER_PAGE, config
-from neo_bloggy.database import get_active_users, get_db, get_publisher_users
+from neo_bloggy.database import get_active_users, get_publisher_users
+from neo_bloggy.models import Post
 from neo_bloggy.utils import InputValidator
 
 
@@ -28,7 +29,6 @@ def search():
     """
     current_user = get_current_user()
     page, per_page = _get_pagination_params()
-    db = get_db()
 
     # Handle POST request - redirect to GET for pagination support
     if request.method == "POST":
@@ -52,12 +52,10 @@ def search():
         return redirect(url_for("posts.get_all_posts"))
 
     # Determine search scope based on user role
-    search_context = _get_search_context(current_user, db)
+    search_context = _get_search_context(current_user)
 
     # Execute search
-    posts, total_posts = _execute_search(
-        db, query, search_context, page, per_page
-    )
+    posts, total_posts = _execute_search(query, search_context, page, per_page)
 
     # Build response
     pagination = _build_pagination(page, per_page, total_posts)
@@ -88,7 +86,7 @@ def _get_pagination_params() -> tuple:
 
 
 def _get_search_context(
-    current_user: Optional[Dict[str, Any]], db
+    current_user: Optional[Dict[str, Any]],
 ) -> Dict[str, Any]:
     """
     Determine search context based on user role.
@@ -103,14 +101,14 @@ def _get_search_context(
             return {"relevant_users": [], "search_filter_base": {}}
         else:
             # Regular users see posts from active users
-            active_users = get_active_users(db)
+            active_users = get_active_users()
             return {
                 "relevant_users": active_users,
                 "search_filter_base": {"author": {"$in": active_users}},
             }
     else:
         # Anonymous users see only publisher posts
-        publisher_users = get_publisher_users(db)
+        publisher_users = get_publisher_users()
         return {
             "relevant_users": publisher_users,
             "search_filter_base": {"author": {"$in": publisher_users}},
@@ -118,7 +116,7 @@ def _get_search_context(
 
 
 def _execute_search(
-    db, query: str, search_context: Dict[str, Any], page: int, per_page: int
+    query: str, search_context: Dict[str, Any], page: int, per_page: int
 ) -> tuple:
     """Execute search query and return posts with total count."""
     skip = (page - 1) * per_page
@@ -127,14 +125,14 @@ def _execute_search(
 
     if query and query.strip():
         return _execute_text_search(
-            db, query, search_filter_base, relevant_users, skip, per_page
+            query, search_filter_base, relevant_users, skip, per_page
         )
     else:
-        return _get_all_posts(db, search_filter_base, skip, per_page)
+        return _get_all_posts(search_filter_base, skip, per_page)
 
 
 def _execute_text_search(
-    db, query, search_filter_base, relevant_users, skip, per_page
+    query, search_filter_base, relevant_users, skip, per_page
 ) -> tuple:
     """Execute full-text search with fallback to regex search."""
     try:
@@ -142,12 +140,9 @@ def _execute_text_search(
         search_filter = _build_fts_filter(
             query, search_filter_base, relevant_users
         )
-        total_posts = db.blog_posts.count_documents(search_filter)
-        posts = list(
-            db.blog_posts.find(search_filter)
-            .sort("datetime", -1)
-            .skip(skip)
-            .limit(per_page)
+        total_posts = Post.count_documents(search_filter)
+        posts = Post.find_many(
+            search_filter, sort=("datetime", -1), skip=skip, limit=per_page
         )
 
         # Add relevance scoring
@@ -170,7 +165,7 @@ def _execute_text_search(
     except Exception:
         # Fallback to regex search
         return _execute_regex_search(
-            db, query, search_filter_base, relevant_users, skip, per_page
+            query, search_filter_base, relevant_users, skip, per_page
         )
 
 
@@ -183,7 +178,7 @@ def _build_fts_filter(query, search_filter_base, relevant_users):
 
 
 def _execute_regex_search(
-    db, query, search_filter_base, relevant_users, skip, per_page
+    query, search_filter_base, relevant_users, skip, per_page
 ) -> tuple:
     """Execute regex-based search as fallback."""
     escaped_query = re.escape(query)
@@ -205,31 +200,25 @@ def _execute_regex_search(
     else:
         search_filter = {"$or": text_patterns}
 
-    total_posts = db.blog_posts.count_documents(search_filter)
-    posts = list(
-        db.blog_posts.find(search_filter)
-        .sort("datetime", -1)
-        .skip(skip)
-        .limit(per_page)
+    total_posts = Post.count_documents(search_filter)
+    posts = Post.find_many(
+        search_filter, sort=("datetime", -1), skip=skip, limit=per_page
     )
     return posts, total_posts
 
 
-def _get_all_posts(db, search_filter_base, skip, per_page) -> tuple:
+def _get_all_posts(search_filter_base, skip, per_page) -> tuple:
     """Get all posts without text search."""
     if search_filter_base:
-        total_posts = db.blog_posts.count_documents(search_filter_base)
-        posts = list(
-            db.blog_posts.find(search_filter_base)
-            .sort("datetime", -1)
-            .skip(skip)
-            .limit(per_page)
+        total_posts = Post.count_documents(search_filter_base)
+        posts = Post.find_many(
+            search_filter_base, sort=("datetime", -1), skip=skip, limit=per_page
         )
     else:
         # Admin viewing all posts
-        total_posts = db.blog_posts.count_documents({})
-        posts = list(
-            db.blog_posts.find().sort("datetime", -1).skip(skip).limit(per_page)
+        total_posts = Post.count_documents({})
+        posts = Post.find_many(
+            {}, sort=("datetime", -1), skip=skip, limit=per_page
         )
     return posts, total_posts
 

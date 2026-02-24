@@ -2,7 +2,6 @@ from neo_bloggy.models import Post, Comment
 from neo_bloggy.database import (
     get_active_users,
     filter_active_user_content,
-    get_db,
 )
 from neo_bloggy.caching.cache_impl import (
     cached_result as cached_result_internal,
@@ -30,8 +29,7 @@ def get_post_with_comments(post_id):
     if post:
         comments = Comment.find_by_post_id(post_id)
         # Filter comments to only show those from active users
-        db = get_db()
-        active_users = get_active_users(db)
+        active_users = get_active_users()
         comments = filter_active_user_content(
             comments, active_users, "comment_author"
         )

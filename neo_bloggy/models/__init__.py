@@ -86,6 +86,18 @@ class User:
             {"_id": user_id}, {"$set": {"is_publisher": is_publisher}}
         )
 
+    @classmethod
+    def count_documents(cls, query):
+        """Count documents matching the query."""
+        return _get_collection(cls.collection).count_documents(query)
+
+    @classmethod
+    def update_profile(cls, user_id, update_data):
+        """Update user profile data."""
+        return _get_collection(cls.collection).update_one(
+            {"_id": user_id}, {"$set": update_data}
+        )
+
 
 class Post:
     """Blog post model with domain-specific query methods."""

@@ -272,6 +272,7 @@ def upload():
                 metadata={
                     "user": session["user"],
                     "original_filename": original_filename_webp,
+                    "alt_text": original_filename_webp,  # Default alt text is the original filename
                     "uploaded_at": time.time(),
                     "content_type": (
                         "image/webp"
@@ -365,14 +366,18 @@ def list_images():
                 "file_upload.serve_gridfs_file", file_id=file_id
             ) + get_file_extension_from_content_type("image/webp")
 
-            # Extract original filename from metadata if available
-            metadata = getattr(file_doc, "metadata", {})
+            # Extract original filename and alt_text from metadata if available
+            metadata = getattr(file_doc, "metadata", {}) or {}
             display_name = metadata.get("original_filename", filename)
+            alt_text = metadata.get(
+                "alt_text", display_name
+            )  # Default to display_name
             file_user = metadata.get("user", "Unknown")
 
             images.append(
                 {
                     "name": display_name,
+                    "alt_text": alt_text,
                     "url": file_url,
                     "size": file_length,
                     "modified": str(upload_date) if upload_date else None,
@@ -471,6 +476,7 @@ def upload_image(current_user):
                     metadata={
                         "user": current_user["name"],
                         "original_filename": original_filename_webp,
+                        "alt_text": original_filename_webp,  # Default alt text is the original filename
                         "uploaded_at": time.time(),
                         "content_type": (
                             "image/webp"
@@ -537,9 +543,12 @@ def upload_image(current_user):
                 file_id = file_doc._id
                 filename = file_doc.filename
 
-                # Extract original filename from metadata if available
-                metadata = getattr(file_doc, "metadata", {})
+                # Extract original filename and alt_text from metadata if available
+                metadata = getattr(file_doc, "metadata", {}) or {}
                 display_name = metadata.get("original_filename", filename)
+                alt_text = metadata.get(
+                    "alt_text", display_name
+                )  # Default to display_name
                 file_user = metadata.get("user", "Unknown")
 
                 formatted_files.append(
@@ -547,6 +556,7 @@ def upload_image(current_user):
                         "file_id": file_id,
                         "full_name": filename,
                         "display_name": display_name,
+                        "alt_text": alt_text,
                         "user": file_user,  # Include user info for admins
                     }
                 )
@@ -677,3 +687,96 @@ def delete_image(current_user, file_id):
     except Exception as e:
         logger.error("Error deleting image: %s", e, exc_info=True)
         return jsonify({"error": f"Failed to delete image: {str(e)}"}), 500
+
+
+def update_image_metadata(current_user, file_id):
+    """Update metadata for an uploaded image (alt_text).
+
+    Authorization rules:
+    - Admin can update any image
+    - Regular users can only update their own images
+    """
+    if request.method != "PUT":
+        return jsonify({"error": "Method not allowed"}), 405
+
+    try:
+        # Check if user is logged in
+        if not current_user:
+            return (
+                jsonify({"error": "You must be logged in to update images"}),
+                403,
+            )
+
+        # Check if user account is disabled
+        if current_user.get("is_disabled", False):
+            return (
+                jsonify(
+                    {
+                        "error": "Your account has been disabled. You cannot update images."
+                    }
+                ),
+                403,
+            )
+
+        # Get the new alt_text from request JSON
+        data = request.get_json()
+        if not data or "alt_text" not in data:
+            return jsonify({"error": "alt_text is required"}), 400
+
+        new_alt_text = data["alt_text"].strip()
+        if not new_alt_text:
+            return jsonify({"error": "alt_text cannot be empty"}), 400
+
+        gfs = get_gridfs()
+        if gfs is None:
+            return jsonify({"error": "File storage system unavailable"}), 500
+
+        # Convert file_id to ObjectId for GridFS operations
+        try:
+            gridfs_id = get_objectid_for_gridfs(file_id)
+        except ValueError:
+            return jsonify({"error": "Invalid file ID format"}), 400
+
+        # Find the file in GridFS using find() with _id filter
+        cursor = gfs.find({"_id": gridfs_id})
+        files = list(cursor)
+
+        if not files:
+            return jsonify({"error": "Image not found"}), 404
+
+        # Get the first (and should be only) file from the cursor
+        file_doc = files[0]
+
+        # Get file metadata
+        metadata = getattr(file_doc, "metadata", {}) or {}
+        file_user = metadata.get("user", "Unknown")
+
+        # Check authorization
+        is_admin = current_user.get("is_admin", False)
+        is_owner = file_user == current_user["name"]
+
+        if not is_admin and not is_owner:
+            return (
+                jsonify({"error": "You can only update your own images"}),
+                403,
+            )
+
+        # Update the metadata using NeoSQLite (PyMongo compatible)
+        gfs._files.update_one(
+            {"_id": gridfs_id}, {"$set": {"metadata.alt_text": new_alt_text}}
+        )
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": "Image metadata updated successfully",
+                    "alt_text": new_alt_text,
+                }
+            ),
+            200,
+        )
+
+    except Exception as e:
+        logger.error("Error updating image metadata: %s", e, exc_info=True)
+        return jsonify({"error": f"Failed to update metadata: {str(e)}"}), 500

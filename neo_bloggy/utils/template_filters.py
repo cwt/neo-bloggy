@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from neo_bloggy.utils import markdown_to_html
+from neo_bloggy.database import get_gridfs, get_objectid_for_gridfs
 
 
 def register_template_filters(app):
@@ -42,3 +43,65 @@ def register_template_filters(app):
             return obj.get("datetime") or obj.get("date") or ""
         # If it's already a string/datetime, return as is
         return obj
+
+    @app.template_filter("get_alt_text")
+    def get_alt_text_filter(img_url):
+        """Jinja2 filter to get alt text from GridFS image URL.
+
+        Extracts file_id from the URL and retrieves alt_text from GridFS metadata.
+        Falls back to the original filename if alt_text is not set.
+        Returns empty string if URL is not a GridFS URL or file not found.
+        """
+        if not img_url:
+            return ""
+
+        try:
+            # Extract file_id from URL pattern: /gridfs/<file_id>.webp or /gridfs/<file_id>
+            # The URL can be like: /gridfs/698ec1e7b6aecc234282eb75.webp
+            if "/gridfs/" not in img_url:
+                return ""
+
+            # Extract the file_id part
+            parts = img_url.split("/gridfs/")
+            if len(parts) < 2:
+                return ""
+
+            file_id_with_ext = parts[1].rstrip("/")
+            # Remove extension (.webp, .jpg, etc.)
+            file_id = (
+                file_id_with_ext.rsplit(".", 1)[0]
+                if "." in file_id_with_ext
+                else file_id_with_ext
+            )
+
+            if not file_id:
+                return ""
+
+            # Get GridFS instance
+            gfs = get_gridfs()
+            if gfs is None:
+                return ""
+
+            # Convert file_id to ObjectId
+            try:
+                gridfs_id = get_objectid_for_gridfs(file_id)
+            except ValueError:
+                return ""
+
+            # Find the file in GridFS
+            cursor = gfs.find({"_id": gridfs_id})
+            files = list(cursor)
+
+            if not files:
+                return ""
+
+            file_doc = files[0]
+            metadata = getattr(file_doc, "metadata", {}) or {}
+
+            # Return alt_text if available, otherwise fall back to original_filename
+            alt_text = metadata.get("alt_text")
+            return alt_text or metadata.get("original_filename")
+
+        except Exception:
+            # On any error, return empty string to not break the page
+            return ""

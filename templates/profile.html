@@ -51,7 +51,7 @@
                   <td>{{ loop.index }}.</td>
                   <td>
                      {% if draft.img_url %}
-                     <img src="{{ draft.img_url }}" class="img-thumbnail small-image" alt="{{ draft.title }}">
+                     <img src="{{ draft.img_url }}" class="img-thumbnail small-image" alt="{{ draft.img_url | get_alt_text }}">
                      {% else %}
                      <span class="text-muted draft-placeholder">No image</span>
                      {% endif %}
@@ -103,7 +103,7 @@
                {% for post in posts %}
                <tr class="table-text">
                   <td>{{ loop.index + drafts|length }}.</td>
-                  <td><img src="{{ post.img_url }}" class="img-thumbnail small-image" alt="{{ post.title }}"></td>
+                  <td><img src="{{ post.img_url }}" class="img-thumbnail small-image" alt="{{ post.img_url | get_alt_text }}"></td>
                   <td class="title-cell">
                      <a href="{{ url_for('posts.show_post', post_id=post._id) }}">{{ post.title }}</a>
                      {% if post.subtitle %}

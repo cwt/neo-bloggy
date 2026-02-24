@@ -40,7 +40,7 @@
                <div class="col-md-4 mb-3">
                   <div class="card image-card">
                      <div class="image-container">
-                        <img src="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp" class="card-img-top" alt="{{ file.display_name }}">
+                        <img src="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp" class="card-img-top" alt="{{ file.alt_text }}">
                      </div>
                      <div class="card-body">
                         <p class="card-text">
@@ -49,6 +49,20 @@
                            <br><small class="text-muted">Uploaded by: {{ file.user }}</small>
                            {% endif %}
                         </p>
+                        <!-- Alt text editing -->
+                        <div class="form-group mb-2">
+                           <label for="alt-text-{{ file.file_id }}" class="small text-muted">Alt Text (for SEO & accessibility)</label>
+                           <input type="text" 
+                                  id="alt-text-{{ file.file_id }}"
+                                  class="form-control form-control-sm alt-text-input" 
+                                  value="{{ file.alt_text }}"
+                                  data-file-id="{{ file.file_id }}">
+                           <button class="btn btn-sm btn-success btn-save-alt-text mt-1"
+                                   data-file-id="{{ file.file_id }}">
+                              <i class="bi bi-check-lg"></i> Save
+                           </button>
+                           <span class="alt-text-message ml-2 small"></span>
+                        </div>
                         <input type="text" class="form-control form-control-sm url-input"
                                value="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp"
                                readonly onclick="this.select()">
@@ -167,16 +181,16 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', function() {
             const fileId = this.getAttribute('data-file-id');
             const fileName = this.getAttribute('data-file-name');
-            
+
             // Confirm deletion
             if (!confirm(`Are you sure you want to delete the image "${fileName}"?\n\nThis action cannot be undone.`)) {
                 return;
             }
-            
+
             // Disable button to prevent multiple clicks
             this.disabled = true;
             this.textContent = 'Deleting...';
-            
+
             // Send DELETE request
             fetch(`/api/images/${fileId}`, {
                 method: 'DELETE',
@@ -209,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Build error message
                 let errorMessage = error.error || 'Failed to delete image';
-                
+
                 // If image is in use, show detailed error with post information
                 if (error.posts && error.posts.length > 0) {
                     errorMessage += '\n\n';
@@ -220,6 +234,65 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 alert(errorMessage);
+            });
+        });
+    });
+
+    // Save alt text functionality
+    const saveAltButtons = document.querySelectorAll('.btn-save-alt-text');
+    saveAltButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const fileId = this.getAttribute('data-file-id');
+            const altTextInput = document.getElementById(`alt-text-${fileId}`);
+            const messageSpan = altTextInput.parentElement.querySelector('.alt-text-message');
+            const newAltText = altTextInput.value.trim();
+
+            if (!newAltText) {
+                messageSpan.textContent = 'Alt text cannot be empty';
+                messageSpan.className = 'alt-text-message ml-2 small text-danger';
+                return;
+            }
+
+            // Disable button during request
+            this.disabled = true;
+            this.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+
+            // Send PUT request to update alt text
+            fetch(`/api/images/${fileId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ alt_text: newAltText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    messageSpan.textContent = 'Saved!';
+                    messageSpan.className = 'alt-text-message ml-2 small text-success';
+                    
+                    // Update the img alt attribute
+                    const img = altTextInput.closest('.image-card').querySelector('img');
+                    if (img) {
+                        img.alt = newAltText;
+                    }
+                    
+                    // Reset button after delay
+                    setTimeout(() => {
+                        button.disabled = false;
+                        button.innerHTML = '<i class="bi bi-check-lg"></i> Save';
+                        messageSpan.textContent = '';
+                    }, 2000);
+                } else {
+                    throw new Error(data.error || 'Failed to save');
+                }
+            })
+            .catch(error => {
+                messageSpan.textContent = error.message || 'Failed to save';
+                messageSpan.className = 'alt-text-message ml-2 small text-danger';
+                button.disabled = false;
+                button.innerHTML = '<i class="bi bi-check-lg"></i> Save';
             });
         });
     });

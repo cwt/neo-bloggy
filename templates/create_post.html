@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="col-md-3 mb-3">
                             <div class="card image-browser-item" style="cursor: pointer;"
                                  onclick="selectImage('${image.url}', '${image.name}')">
-                                <img src="${image.url}" class="card-img-top" style="height: 150px; object-fit: cover;" alt="${image.name}">
+                                <img src="${image.url}" class="card-img-top" style="height: 150px; object-fit: cover;" alt="${image.alt_text || image.name}">
                                 <div class="card-body p-2">
                                     <p class="card-text small text-truncate mb-0">${image.name}</p>
                                     ${data.images[0].user ? '<small class="text-muted">By: ' + image.user + '</small>' : ''}

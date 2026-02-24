@@ -51,16 +51,18 @@
                         </p>
                         <!-- Alt text editing -->
                         <div class="form-group mb-2">
-                           <label for="alt-text-{{ file.file_id }}" class="small text-muted">Alt Text (for SEO & accessibility)</label>
-                           <input type="text" 
+                           <label for="alt-text-{{ file.file_id }}" class="small text-muted">Alt Text</label>
+                           <input type="text"
                                   id="alt-text-{{ file.file_id }}"
-                                  class="form-control form-control-sm alt-text-input" 
+                                  class="form-control form-control-sm alt-text-input"
                                   value="{{ file.alt_text }}"
                                   data-file-id="{{ file.file_id }}">
-                           <button class="btn btn-sm btn-success btn-save-alt-text mt-1"
-                                   data-file-id="{{ file.file_id }}">
-                              <i class="bi bi-check-lg"></i> Save
-                           </button>
+                           <div class="mt-2 d-flex flex-column gap-2">
+                              <button class="btn btn-sm btn-success btn-save-alt-text"
+                                      data-file-id="{{ file.file_id }}">
+                                 <i class="bi bi-check-lg"></i> Save
+                              </button>
+                           </div>
                            <span class="alt-text-message ml-2 small"></span>
                         </div>
                         <input type="text" class="form-control form-control-sm url-input"

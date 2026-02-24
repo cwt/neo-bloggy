@@ -35,7 +35,7 @@ We've significantly modified this project to work with NeoSQLite, demonstrating 
 ### Back-End Technologies
 - Python 3.x
 - Flask 3.1
-- NeoSQLite 1.2.3 or newer
+- NeoSQLite 1.3.1 or newer (with PyMongo-like GridFS API)
 - Flask-Bootstrap5 2.5.0
 - Flask-WTF 1.2.2
 
@@ -47,6 +47,7 @@ We've significantly modified this project to work with NeoSQLite, demonstrating 
 - **Comment System**: Users can comment on posts with Markdown support
 - **Search Functionality**: Full-text search across posts using NeoSQLite's FTS capabilities, with optional support for Asian languages (Chinese, Japanese, Korean, Thai, etc.) through custom FTS5 tokenizers
 - **File Uploads**: Image upload functionality with automatic WebP conversion for posts
+- **Image Alt Text**: Edit alt text for uploaded images for SEO and accessibility (Bing Webmaster Tools compliant)
 - **Responsive Design**: Mobile-friendly interface with adaptive action buttons in user profiles
 - **Admin Panel**: Administrators can manage users and content
 - **Security Features**: XSS protection, input validation, and secure password handling
@@ -101,6 +102,33 @@ Neo Bloggy includes a comprehensive draft system for content creators:
    - Subtitle displayed below title for posts that have one
    - Edit and Delete buttons grouped together for easy access
 
+## Image Alt Text (SEO & Accessibility)
+
+Neo Bloggy includes comprehensive support for image alt text to improve SEO and accessibility:
+
+1. **Automatic Alt Text**:
+   - New uploads automatically get alt text from the original filename
+   - Alt text is stored in GridFS metadata (NeoSQLite ≥ 1.3.1)
+
+2. **Editing Alt Text**:
+   - Visit the **Upload Image** page to view all uploaded images
+   - Each image has an "Alt Text" field with a Save button
+   - Update alt text to be more descriptive for better SEO
+
+3. **SEO Benefits**:
+   - All image tags now include meaningful alt attributes
+   - Complies with Bing Webmaster Tools requirements
+   - Improves accessibility for screen readers
+   - Better search engine indexing
+
+4. **PyMongo-like API**:
+   - Alt text is managed using NeoSQLite's PyMongo-compatible GridFS API
+   - Example: `db.fs.files.update_one({"_id": file_id}, {"$set": {"metadata.alt_text": "Description"}})`
+
+5. **Migration**:
+   - Existing images can be migrated using: `python scripts/migrate_image_alt_text.py`
+   - Migration populates alt text from original filenames
+
 ## NeoSQLite Advantages Demonstrated
 
 This project demonstrates several key advantages of [NeoSQLite](https://github.com/cwt/neosqlite):
@@ -112,6 +140,7 @@ This project demonstrates several key advantages of [NeoSQLite](https://github.c
 5. **Performance**: Faster local operations without network latency
 6. **Full-Text Search**: Advanced text search capabilities with support for custom FTS5 tokenizers (enabling Asian language search)
 7. **GridFS Support**: Built-in GridFS-like functionality for file storage
+8. **PyMongo-like GridFS Collections** (v1.3.1+): Access GridFS metadata using familiar `db.fs.files.find()` and `db.fs.files.update_one()` syntax
 
 ## Asian Language Search Support
 
@@ -310,6 +339,7 @@ The application automatically adapts to your environment through the `config.tom
 
 This project includes several migration scripts to help manage database schema changes, located in the `scripts/` directory:
 
+- `scripts/migrate_image_alt_text.py`: Populates alt text for existing GridFS images from original filenames (NeoSQLite ≥ 1.3.1)
 - `scripts/migrate_to_gridfs.py`: Migrates existing file uploads to GridFS storage
 - `scripts/migrate_to_objectid.py`: Migrates old integer IDs to MongoDB-style ObjectIds
 - `scripts/migrate_admin_publisher.py`: Ensures the first admin user also has publisher status
@@ -318,6 +348,7 @@ This project includes several migration scripts to help manage database schema c
 These scripts should be run manually as needed when upgrading the application or when specific database changes are required. They can be run as standalone Python scripts from the project root:
 
 ```bash
+python scripts/migrate_image_alt_text.py
 python scripts/migrate_admin_publisher.py
 ```
 

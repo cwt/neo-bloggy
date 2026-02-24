@@ -11,8 +11,8 @@ import os
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from neo_bloggy.database import get_gridfs
 from neo_bloggy import create_app
+from neo_bloggy.database import get_db
 
 
 def migrate_alt_text():
@@ -23,14 +23,12 @@ def migrate_alt_text():
     app = create_app()
 
     with app.app_context():
-        gfs = get_gridfs()
-        if gfs is None:
-            print("ERROR: GridFS is unavailable. Make sure MongoDB is running.")
-            return False
+        db = get_db()
 
         try:
-            # Find all files in GridFS
-            files = list(gfs._files.find({}))
+            # Use PyMongo-like API (NeoSQLite >= 1.3.1)
+            cursor = db.fs.files.find({})
+            files = list(cursor)
 
             if not files:
                 print("No images found in GridFS.")
@@ -43,11 +41,11 @@ def migrate_alt_text():
             error_count = 0
 
             for file_doc in files:
-                filename = file_doc["filename"]
-                try:
-                    file_id = file_doc["_id"]
-                    metadata = file_doc.get("metadata", {})
+                file_id = file_doc._id
+                filename = file_doc.filename
+                metadata = file_doc.metadata or {}
 
+                try:
                     # Check if alt_text already exists
                     if "alt_text" in metadata and metadata["alt_text"]:
                         print(
@@ -61,8 +59,8 @@ def migrate_alt_text():
                         "original_filename", filename
                     )
 
-                    # Update using NeoSQLite (PyMongo compatible)
-                    gfs._files.update_one(
+                    # Update metadata using PyMongo-like API (NeoSQLite >= 1.3.1)
+                    db.fs.files.update_one(
                         {"_id": file_id},
                         {"$set": {"metadata.alt_text": original_filename}},
                     )

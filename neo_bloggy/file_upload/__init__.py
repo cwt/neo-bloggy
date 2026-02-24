@@ -24,6 +24,7 @@ from neosqlite import gridfs as gridfs_errors
 
 from neo_bloggy.auth import get_current_user
 from neo_bloggy.database import (
+    get_db,
     get_gridfs,
     get_objectid_for_gridfs,
 )
@@ -761,8 +762,9 @@ def update_image_metadata(current_user, file_id):
                 403,
             )
 
-        # Update the metadata using NeoSQLite (PyMongo compatible)
-        gfs._files.update_one(
+        # Update metadata using PyMongo-like API (NeoSQLite >= 1.3.1)
+        db = get_db()
+        db.fs.files.update_one(
             {"_id": gridfs_id}, {"$set": {"metadata.alt_text": new_alt_text}}
         )
 

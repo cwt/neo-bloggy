@@ -70,7 +70,7 @@
                                readonly onclick="this.select()">
                         <div class="mt-2 d-flex flex-column gap-2">
                            <button class="btn btn-outline-primary btn-sm copy-url-btn"
-                                   data-url="{{ config.app.base_url.rstrip('/') }}{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp"
+                                   data-url="{{ (config.app.get('base_url', '') or '').rstrip('/') }}{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp"
                                    data-relative-url="{{ url_for('file_upload.serve_gridfs_file', file_id=file.file_id) }}.webp">
                               <i class="bi bi-clipboard"></i> Copy Image URL
                            </button>

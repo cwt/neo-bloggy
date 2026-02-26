@@ -353,6 +353,22 @@ article img {
     margin: 1rem auto;
 }
 
+/* Allow long URLs and text to wrap properly in post content */
+article p,
+article li,
+article td,
+article th,
+article a {
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    max-width: 100%;
+}
+
+/* For URLs specifically, allow breaking at any point */
+article a[href] {
+    word-break: break-all !important;
+}
+
 /*------------------------------------*\
  #COPY CODE BUTTON
 \*------------------------------------*/

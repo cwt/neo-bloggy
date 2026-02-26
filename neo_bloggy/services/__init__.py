@@ -323,9 +323,7 @@ class PostService:
                 "body": edit_form.body.data,
                 "tags": PostService._process_tags(edit_form.tags.data),
                 "status": (
-                    Post.STATUS_DRAFT
-                    if is_draft
-                    else post.get("status", Post.STATUS_PUBLISHED)
+                    Post.STATUS_DRAFT if is_draft else Post.STATUS_PUBLISHED
                 ),
             }
             Post.update_post(post_id, update_data)

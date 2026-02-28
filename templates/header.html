@@ -158,6 +158,28 @@
          .write-jumbotron { background: url("/static/img/webp/create.webp") no-repeat center center; background-size: cover; }
          .upload-jumbotron { background: url("/static/img/webp/upload.webp") no-repeat center center; background-size: cover; }
          .profile-jumbotron { background: url("/static/img/webp/signup.webp") no-repeat center center; background-size: cover; }
+         /*------------------------------------*\ #FONT CLS OPTIMIZATION \*------------------------------------*/
+         /* Define fallback fonts with size-adjust to match web font metrics and reduce CLS */
+         @font-face {
+            font-family: 'IBM Plex Sans Thai Looped Fallback';
+            src: local('Arial');
+            size-adjust: 107%;
+            ascent-override: 95%;
+            descent-override: 28%;
+            line-gap-override: 0%;
+         }
+         @font-face {
+            font-family: 'IBM Plex Mono Fallback';
+            src: local('Courier New');
+            size-adjust: 102%;
+            ascent-override: 93%;
+            descent-override: 25%;
+            line-gap-override: 0%;
+         }
+         /* Use fallback fonts until web fonts load */
+         body { font-family: 'IBM Plex Sans Thai Looped Fallback', 'IBM Plex Sans Thai Looped', sans-serif; }
+         h1, h2, h3, h4, h5, h6, .btn, .section-heading { font-family: 'IBM Plex Sans Thai Looped Fallback', 'IBM Plex Sans Thai Looped', sans-serif; }
+         code, pre, .hljs { font-family: 'IBM Plex Mono Fallback', 'IBM Plex Mono', monospace; }
       </style>
       <!-- Non-critical CSS loaded asynchronously to prevent render-blocking -->
       <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
@@ -189,9 +211,11 @@
          {% endif %}
       {% endif %}
 
-      <!-- Google Fonts -->
+      <!-- Google Fonts - Preload CSS and use font-display:swap to reduce CLS -->
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <!-- Preload Google Fonts CSS for faster font loading -->
+      <link rel="preload" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=IBM+Plex+Sans+Thai+Looped:wght@100;200;300;400;500;600;700&display=swap" as="style">
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=IBM+Plex+Sans+Thai+Looped:wght@100;200;300;400;500;600;700&display=swap" rel="stylesheet">
 
       <!-- Load highlight.js script asynchronously -->

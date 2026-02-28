@@ -26,7 +26,8 @@ CSP_DIRECTIVES = {
         "'self' 'unsafe-inline' https://cdn.jsdelivr.net "
         "https://cdnjs.cloudflare.com https://platform.twitter.com "
         "https://syndication.twitter.com https://www.googletagmanager.com "
-        "https://use.fontawesome.com https://maxcdn.bootstrapcdn.com"
+        "https://use.fontawesome.com https://maxcdn.bootstrapcdn.com "
+        "https://static.cloudflareinsights.com"
     ),
     "style-src": (
         "'self' 'unsafe-inline' https://cdn.jsdelivr.net "
@@ -38,7 +39,10 @@ CSP_DIRECTIVES = {
         "'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com "
         "https://use.fontawesome.com https://maxcdn.bootstrapcdn.com"
     ),
-    "connect-src": "'self' https://www.google-analytics.com https://cdn.jsdelivr.net",
+    "connect-src": (
+        "'self' https://www.google-analytics.com https://cdn.jsdelivr.net "
+        "https://static.cloudflareinsights.com"
+    ),
     "frame-ancestors": "'none'",
     "object-src": "'none'",
     "base-uri": "'self'",

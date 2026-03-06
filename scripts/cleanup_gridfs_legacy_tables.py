@@ -29,7 +29,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import sqlite3
 
-from neo_bloggy import create_app
 from neo_bloggy.config import config
 
 DB_PATH = config.get("database", {}).get("db_path", "neo-bloggy.db")
@@ -160,7 +159,9 @@ def cleanup_legacy_tables():
             t for t in legacy_tables.keys() if check_table_exists(conn, t)
         ]
         if remaining_legacy:
-            print(f"  WARNING: Some legacy tables still exist: {remaining_legacy}")
+            print(
+                f"  WARNING: Some legacy tables still exist: {remaining_legacy}"
+            )
         else:
             print("  ✓ All legacy tables removed successfully")
 

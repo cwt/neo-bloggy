@@ -44,6 +44,7 @@ def markdown_to_html(markdown_text):
             "extra",
             "codehilite",
             "fenced_code",
+            "tables",
         ],
         extension_configs={
             "codehilite": {
@@ -61,6 +62,9 @@ def markdown_to_html(markdown_text):
             "max-height",
             "margin",
             "display",
+            "border",
+            "padding",
+            "text-align",
         ]
     )
 
@@ -88,6 +92,12 @@ def markdown_to_html(markdown_text):
         "strong",
         "u",
         "ul",
+        "table",
+        "thead",
+        "tbody",
+        "tr",
+        "th",
+        "td",
     ]
     allowed_attributes = {
         "a": ["href", "title"],
@@ -95,6 +105,8 @@ def markdown_to_html(markdown_text):
         "div": ["class"],
         "span": ["class"],
         "pre": ["class"],
+        "td": ["align", "style"],
+        "th": ["align", "style"],
     }
 
     return bleach.clean(

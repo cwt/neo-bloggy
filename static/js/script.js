@@ -28,3 +28,43 @@ if (mybutton) {
     document.documentElement.scrollTop = 0;
   }
 }
+
+/**
+ * Modern Responsive Table Wrapper
+ * Automatically wraps tables in post content and comments with a responsive container
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    function wrapTables() {
+        const containers = document.querySelectorAll('.post-content, .commentText');
+        containers.forEach(container => {
+            const tables = container.querySelectorAll('table');
+            tables.forEach(table => {
+                // Skip if already wrapped or if it's a specific UI table
+                if (table.parentElement.classList.contains('table-responsive-wrapper') || 
+                    table.classList.contains('profile-table')) {
+                    return;
+                }
+                
+                // Create wrapper
+                const wrapper = document.createElement('div');
+                wrapper.className = 'table-responsive-wrapper';
+                
+                // Insert wrapper before table and move table inside
+                table.parentNode.insertBefore(wrapper, table);
+                wrapper.appendChild(table);
+            });
+        });
+    }
+
+    // Run once on load
+    wrapTables();
+    
+    // Also run when EasyMDE preview is toggled (it might add tables dynamically)
+    // We can listen for clicks on preview buttons or use MutationObserver
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.preview')) {
+            // Wait a bit for EasyMDE to render the preview
+            setTimeout(wrapTables, 50);
+        }
+    });
+});

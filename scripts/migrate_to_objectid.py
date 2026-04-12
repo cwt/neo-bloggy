@@ -9,6 +9,7 @@ According to NeoSQLite v1.1.0 changes:
 - For a clean migration, we need to update all existing documents to trigger
   ObjectId generation in the _id field
 """
+
 import logging
 import neosqlite
 import os

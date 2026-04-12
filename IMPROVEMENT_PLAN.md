@@ -163,11 +163,11 @@ Comprehensive plan to improve the website's performance, accessibility, security
 
 ### Critical Issues (High Priority)
 
-#### 3.1 Implement Security Headers ⏳ MOSTLY COMPLETED
+#### 3.1 Implement Security Headers ✅ COMPLETED
 **Issue**: Missing critical security headers
 
 **Recommendations**:
-- Add Content Security Policy (CSP) header ⏳ Implemented but nonce not enforced
+- Add Content Security Policy (CSP) header ✅ COMPLETED (with nonce enforcement)
 - Implement HSTS header with appropriate max-age ✅ COMPLETED
 - Add Cross-Origin-Opener-Policy (COOP) header ✅ COMPLETED
 - Implement X-Frame-Options or CSP frame-ancestors directive ✅ COMPLETED
@@ -196,17 +196,13 @@ The middleware uses a policy with trusted CDN allowlists:
 - `base-uri 'self'` - Restricts base element
 - `form-action 'self'` - Restricts form submissions
 
-**⚠️ Known Issue - CSP Nonce Not Enforced**:
-The `_build_csp_policy()` function in `middleware/__init__.py` checks for `"{nonce}"` placeholders in directive values, but **none of the `CSP_DIRECTIVES` values contain `"{nonce}"`**. This means:
-- The nonce is generated and available to templates via `csp_nonce`
-- Templates use `nonce="{{ csp_nonce }}"` on inline scripts/styles
-- However, the CSP header does **not** include `'nonce-<value>'` in `script-src` or `style-src`
-- Inline scripts work because `'unsafe-inline'` is still permitted
-- The nonce attributes in templates provide no actual CSP enforcement benefit
-
-**To fix this**, either:
-1. Add `'{nonce}'` to `script-src` and `style-src` directives and update `_build_csp_policy` to replace it, OR
-2. Remove nonce attributes from templates if `'unsafe-inline'` is intentionally kept
+**✅ CSP Nonce Enforcement**:
+The `_build_csp_policy()` function in `middleware/__init__.py` properly handles nonce injection:
+- `script-src` uses `'nonce-{nonce}'` for strict script enforcement
+- `style-src` uses `'unsafe-inline' 'unsafe-hashes'` (CSP spec doesn't allow combining `'unsafe-inline'` with nonces)
+- The nonce is generated per-request via `get_csp_nonce()`
+- Templates use `nonce="{{ csp_nonce }}"` on inline `<script>` and `<style>` tags
+- `'unsafe-hashes'` allows Bootstrap's dynamic inline style attributes to work
 
 ## 4. Implementation Steps
 
@@ -350,8 +346,8 @@ def after_request(response):
 
 **CSP Directives** (defined in `CSP_DIRECTIVES` dict):
 - `default-src: 'self'`
-- `script-src: 'self' 'unsafe-inline' <trusted CDNs>`
-- `style-src: 'self' 'unsafe-inline' <trusted CDNs>`
+- `script-src: 'self' 'nonce-{nonce}' <trusted CDNs>`
+- `style-src: 'self' 'unsafe-inline' 'unsafe-hashes' <trusted CDNs>`
 - `img-src: 'self' data: blob: https:`
 - `font-src: 'self' <trusted CDNs>`
 - `connect-src: 'self' <analytics endpoints>`
@@ -453,7 +449,7 @@ After implementing the initial improvement changes, we observed the following re
 5. **Modern stack**: Updated to Flask 3.1, Bootstrap 5.3, and modern Python practices
 
 ### Known Issues to Address:
-1. **CSP nonce not enforced**: Nonce is generated and used in templates, but `_build_csp_policy()` doesn't inject it into the CSP header (no `"{nonce}"` in directive values). Inline scripts work via `'unsafe-inline'` fallback.
+1. ✅ **CSP nonce enforcement** - `script-src` uses nonce-only, `style-src` includes `'unsafe-inline'` for Bootstrap compatibility (dynamic inline styles)
 2. **CSS loading**: Bootstrap and Font Awesome use synchronous `<link rel="stylesheet">` instead of preload+onload pattern. This prevents FOUC but keeps resources render-blocking.
 3. **No responsive images**: Images lack `srcset` and `sizes` attributes for responsive loading.
 4. **WebP conversion**: Mentioned in plan but not implemented for uploaded images.
@@ -485,7 +481,7 @@ The following regressions were identified and fixed during the implementation:
 - Implemented nonce generation in `neo_bloggy/auth/__init__.py`
 - Added nonce injection via context processor in `neo_bloggy/__init__.py`
 - Updated all templates with `nonce="{{ csp_nonce }}"` attributes on inline scripts and styles
-- ⚠️ **Note**: Nonce is generated and used in templates, but `_build_csp_policy()` does not inject it into the CSP header (no `"{nonce}"` placeholder in directive values). The nonce attributes work because `'unsafe-inline'` is still permitted.
+- ✅ **Updated**: Nonce is now properly injected into `script-src` header via `'nonce-{nonce}'` placeholder. `style-src` includes `'unsafe-inline' 'unsafe-hashes'` for Bootstrap compatibility.
 
 **Files modified**:
 - `neo_bloggy/middleware/__init__.py` (added nonce-based CSP)
@@ -513,13 +509,13 @@ The following outcomes have been achieved through the implementation:
   - Fixed unnamed links with proper aria-labels
   - Fixed heading hierarchy (h5 → h3 for post titles)
 
-- **Security improvements**: ⏳ Mostly Achieved
+- **Security improvements**: ✅ Achieved
   - Implemented CSP with trusted CDN allowlists
   - Added HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy headers
   - Added Cross-Origin-Opener-Policy header
-  - HTML minification implemented
-  - ⚠️ CSP nonce not enforced in header (works via `'unsafe-inline'` fallback)
-  - ⚠️ `'unsafe-inline'` still permitted in script-src and style-src
+   - HTML minification implemented
+   - ✅ CSP nonce enforced in `script-src` via `'nonce-{nonce}'`
+   - ✅ `style-src` includes `'unsafe-inline' 'unsafe-hashes'` for Bootstrap compatibility (dynamic inline styles and event handlers)
 
 - **Better overall user experience**: ✅ Achieved
   - Faster loading times through resource optimization
@@ -549,7 +545,7 @@ The following outcomes have been achieved through the implementation:
    - ✅ CSP headers with trusted CDN allowlists
    - ✅ Security headers (HSTS, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy)
    - ✅ Cross-Origin-Opener-Policy header
-   - ✅ Nonce generation and template injection (⚠️ not enforced in CSP header)
+   - ✅ Nonce generation and template injection (`script-src` uses nonce, `style-src` includes `'unsafe-inline' 'unsafe-hashes'` for Bootstrap)
    - ✅ Input validation and XSS protection
 
 4. **Accessibility Improvements**
@@ -576,14 +572,15 @@ The following outcomes have been achieved through the implementation:
    - ⏳ Audit and remove unused Bootstrap components
    - ⏳ Optimize EasyMDE editor bundle (already lazy-loaded per-page)
 
-3. **CSP Nonce Enforcement**
-   - ⏳ Fix `_build_csp_policy()` to inject nonce into `script-src` and `style-src`
-   - ⏳ OR remove nonce attributes from templates if `'unsafe-inline'` is intentionally kept
+   3. **CSP Nonce Enforcement** ✅ COMPLETED
+   - `script-src` uses nonce-only enforcement
+   - `style-src` includes `'unsafe-inline' 'unsafe-hashes'` for Bootstrap compatibility
 
 ### Notable Current State:
 - The monolithic `app.py` has been refactored into a modular `neo_bloggy` package
-- The CSP implementation uses CDN allowlists; nonce is generated but **not enforced** in the CSP header
-- All templates use `nonce="{{ csp_nonce }}"` on inline scripts/styles (works via `'unsafe-inline'` fallback)
+- CSP implementation uses CDN allowlists with nonce enforcement for scripts
+- `style-src` includes `'unsafe-inline' 'unsafe-hashes'` to support Bootstrap's dynamic inline styles and event handlers
+- All templates use `nonce="{{ csp_nonce }}"` on inline `<script>` and `<style>` tags
 - Image loading optimized with width/height attributes, lazy loading, and fetchpriority
 - Full accessibility compliance implemented
 - Social media links use X instead of Twitter
@@ -594,9 +591,8 @@ The following outcomes have been achieved through the implementation:
 ## 10. Future Improvements
 
 ### 10.0 Immediate Priorities (from April 2026 verification audit)
-1. **CSP Nonce Enforcement** - Fix `_build_csp_policy()` to properly inject `'nonce-<value>'` into `script-src` and `style-src` directives, or remove nonce attributes from templates if `'unsafe-inline'` is intentionally kept
+1. **CSP Nonce Enforcement** ✅ COMPLETED - `script-src` uses nonce-only, `style-src` includes `'unsafe-inline' 'unsafe-hashes'` for Bootstrap compatibility
 2. **Responsive Images** - Implement `srcset` and `sizes` attributes for post card images
-3. **Canonical URL Configuration** - Set `base_url` in `config.toml` to the production domain (`https://neo.bashell.com/`) for proper canonical URLs
 
 ### 10.1 Database Performance Optimization (NeoSQLite Aggregation Pipeline)
 

@@ -11,7 +11,6 @@ from neo_bloggy.database import get_active_users, get_publisher_users
 from neo_bloggy.models import Post
 from neo_bloggy.utils import InputValidator
 
-
 # Search result constants
 CACHE_CONTROL_NO_CACHE = "no-cache, no-store, must-revalidate"
 CACHE_CONTROL_PRAGMA = "no-cache"

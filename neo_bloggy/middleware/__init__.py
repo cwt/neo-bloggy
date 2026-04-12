@@ -8,7 +8,6 @@ from neo_bloggy.auth import get_csp_nonce, get_current_user
 from neo_bloggy.caching import clear_expired_cache
 from neo_bloggy.config import CACHE_ENABLED
 
-
 # Security header values
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
@@ -23,14 +22,14 @@ SECURITY_HEADERS = {
 CSP_DIRECTIVES = {
     "default-src": "'self'",
     "script-src": (
-        "'self' 'unsafe-inline' https://cdn.jsdelivr.net "
+        "'self' 'nonce-{nonce}' https://cdn.jsdelivr.net "
         "https://cdnjs.cloudflare.com https://platform.twitter.com "
         "https://syndication.twitter.com https://www.googletagmanager.com "
         "https://use.fontawesome.com https://maxcdn.bootstrapcdn.com "
         "https://static.cloudflareinsights.com"
     ),
     "style-src": (
-        "'self' 'unsafe-inline' https://cdn.jsdelivr.net "
+        "'self' 'unsafe-inline' 'unsafe-hashes' https://cdn.jsdelivr.net "
         "https://cdnjs.cloudflare.com https://fonts.googleapis.com "
         "https://use.fontawesome.com https://maxcdn.bootstrapcdn.com"
     ),

@@ -3,6 +3,7 @@
 Migration script to fix existing databases where first admin user is not a publisher.
 This script should be run once to ensure any existing first admin user also has publisher status.
 """
+
 import logging
 import os
 import sys

@@ -14,7 +14,6 @@ from wtforms.validators import (
     Optional,
 )
 
-
 # Security questions for password recovery
 SECURITY_QUESTIONS = [
     ("", "Select a security question..."),

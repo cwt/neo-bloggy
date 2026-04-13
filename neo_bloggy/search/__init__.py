@@ -133,32 +133,33 @@ def _execute_search(
 def _execute_text_search(
     query, search_filter_base, relevant_users, skip, per_page
 ) -> tuple:
-    """Execute full-text search with fallback to regex search."""
+    """Execute full-text search with native $meta: textScore relevance scoring."""
     try:
-        # Try FTS search first
-        search_filter = _build_fts_filter(
+        # Try FTS search with native relevance scoring via aggregation
+        from neo_bloggy.database import get_db
+
+        db = get_db()
+        text_filter = _build_fts_filter(
             query, search_filter_base, relevant_users
         )
-        total_posts = Post.count_documents(search_filter)
-        posts = Post.find_many(
-            search_filter, sort=("datetime", -1), skip=skip, limit=per_page
-        )
 
-        # Add relevance scoring
-        for post in posts:
-            if hasattr(post, "_meta") and "textScore" in post._meta:
-                post["search_score"] = post._meta["textScore"]
-            else:
-                post["search_score"] = 0
+        # Use aggregation pipeline for native $meta: textScore
+        pipeline = [
+            {"$match": text_filter},
+            {"$addFields": {"search_score": {"$meta": "textScore"}}},
+            {"$sort": {"search_score": -1, "datetime": -1}},
+        ]
 
-        # Sort by relevance
-        posts.sort(
-            key=lambda x: (
-                x.get("search_score", 0),
-                x.get("datetime", ""),
-            ),
-            reverse=True,
-        )
+        all_results = list(db.blog_posts.aggregate(pipeline))
+
+        # Add search_score to each result
+        for post in all_results:
+            post["search_score"] = post.get("search_score", 0)
+
+        total_posts = len(all_results)
+
+        # Apply pagination
+        posts = all_results[skip : skip + per_page]
         return posts, total_posts
 
     except Exception:

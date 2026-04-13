@@ -37,6 +37,7 @@ from neo_bloggy.database import (
     get_active_users,
     get_id_for_query,
     get_publisher_users,
+    get_related_tags,
 )
 from neo_bloggy.forms import CommentForm, CreatePostForm
 from neo_bloggy.models import Comment, Post, User
@@ -458,19 +459,11 @@ class PostService:
         # Find posts with the specified tag
         posts = Post.find_many(search_filter, sort=("datetime", -1))
 
-        # Also get related tags for this tag to show related tags
-        all_posts_with_tag = Post.find_many(
-            search_filter, sort=("datetime", -1)
+        # Get related tags using aggregation pipeline ($unwind + $group)
+        # Replaces O(n) Python loop with single aggregation query
+        related_tags = get_related_tags(
+            search_filter, exclude_tag=tag, limit=10
         )
-        all_tags = set()
-        for post in all_posts_with_tag:
-            for post_tag in post.get("tags", []):
-                if (
-                    post_tag and post_tag.lower() != tag.lower()
-                ):  # Exclude the current tag
-                    all_tags.add(post_tag)
-
-        related_tags = sorted(list(all_tags))[:10]  # Limit to 10 related tags
 
         response = make_response(
             render_template(
@@ -542,23 +535,27 @@ class CommentService:
                     flash("The requested post is not available.")
                     return redirect(url_for("posts.get_all_posts"))
 
-            # Filter comments to only show those from active users
-            active_users = get_active_users()
-            if hasattr(requested_post_comments, "__iter__"):
-                requested_post_comments = (
-                    CommentService.filter_active_user_content(
-                        requested_post_comments, active_users, "comment_author"
+            # Note: GET requests from get_post_with_comments() already filter
+            # active users via aggregation pipeline. POST requests still need
+            # Python-side filtering since they fetch raw comments.
+            if request.method != "GET":
+                active_users = get_active_users()
+                if hasattr(requested_post_comments, "__iter__"):
+                    requested_post_comments = (
+                        CommentService.filter_active_user_content(
+                            requested_post_comments,
+                            active_users,
+                            "comment_author",
+                        )
                     )
-                )
-            else:
-                # If it's a cursor, convert to list and filter
-                requested_post_comments = (
-                    CommentService.filter_active_user_content(
-                        list(requested_post_comments),
-                        active_users,
-                        "comment_author",
+                else:
+                    requested_post_comments = (
+                        CommentService.filter_active_user_content(
+                            list(requested_post_comments),
+                            active_users,
+                            "comment_author",
+                        )
                     )
-                )
 
             # commenting on a post
             if form.validate_on_submit():

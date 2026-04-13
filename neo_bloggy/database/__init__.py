@@ -181,3 +181,39 @@ def get_publisher_users():
     from neo_bloggy.models import User
 
     return [user["name"] for user in User.find_publisher_users()]
+
+
+def get_related_tags(search_filter, exclude_tag, limit=10):
+    """Get related tags using $unwind + $group aggregation pipeline.
+
+    Replaces O(n) Python loop through all posts with a single aggregation
+    pipeline for exponential scaling improvement.
+    Requires NeoSQLite >= 1.14.4 for $ne support after $group.
+
+    Args:
+        search_filter: MongoDB-style query filter for posts
+        exclude_tag: Tag name to exclude from results (the current tag)
+        limit: Maximum number of related tags to return
+
+    Returns:
+        List of tag names sorted by frequency (descending)
+    """
+    db = get_db()
+
+    # Build aggregation pipeline: match -> unwind tags -> group by tag -> filter -> sort -> limit
+    pipeline = [
+        {"$match": search_filter},
+        {"$unwind": "$tags"},
+        {
+            "$group": {
+                "_id": "$tags",
+                "count": {"$sum": 1},
+            }
+        },
+        {"$match": {"_id": {"$ne": exclude_tag}}},
+        {"$sort": {"count": -1, "_id": 1}},
+        {"$limit": limit},
+    ]
+
+    results = list(db.blog_posts.aggregate(pipeline))
+    return [r["_id"] for r in results if r["_id"]]

@@ -31,7 +31,45 @@
          <div class="container">
          </div>
       </div>
-      
+
+      <!-- Profile Statistics Cards -->
+      {% if profile_stats %}
+      <div class="row mb-4">
+         <div class="col-md-3 mb-3">
+            <div class="card text-white bg-primary">
+               <div class="card-body text-center">
+                  <h6 class="card-title">Published Posts</h6>
+                  <p class="display-4 mb-0">{{ profile_stats.published_posts }}</p>
+               </div>
+            </div>
+         </div>
+         <div class="col-md-3 mb-3">
+            <div class="card text-white bg-warning">
+               <div class="card-body text-center">
+                  <h6 class="card-title">Drafts</h6>
+                  <p class="display-4 mb-0">{{ profile_stats.drafts }}</p>
+               </div>
+            </div>
+         </div>
+         <div class="col-md-3 mb-3">
+            <div class="card text-white bg-info">
+               <div class="card-body text-center">
+                  <h6 class="card-title">Comments</h6>
+                  <p class="display-4 mb-0">{{ profile_stats.total_comments }}</p>
+               </div>
+            </div>
+         </div>
+         <div class="col-md-3 mb-3">
+            <div class="card text-white bg-success">
+               <div class="card-body text-center">
+                  <h6 class="card-title">Total Content</h6>
+                  <p class="display-4 mb-0">{{ profile_stats.published_posts + profile_stats.drafts + profile_stats.total_comments }}</p>
+               </div>
+            </div>
+         </div>
+      </div>
+      {% endif %}
+
       <h2 class="your-posts-header">Your Posts</h2>
       <div class="table-responsive">
          <table class="table table-striped table-sm profile-table">

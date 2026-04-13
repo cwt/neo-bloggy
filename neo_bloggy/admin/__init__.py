@@ -149,12 +149,10 @@ def unpublished_posts(current_user):
         {"author": {"$in": non_publisher_users}}, sort=("datetime", -1)
     )
 
-    # Get user information for each post author
-    post_authors = {}
-    for post in posts:
-        if post["author"] not in post_authors:
-            author = User.find_by_name(post["author"])
-            post_authors[post["author"]] = author
+    # Get user information for all post authors at once (avoids N+1 query)
+    author_names = list(set(post["author"] for post in posts))
+    authors = User.find_many({"name": {"$in": author_names}})
+    post_authors = {author["name"]: author for author in authors}
 
     return render_template(
         "unpublished_posts.html",

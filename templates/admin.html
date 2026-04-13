@@ -21,6 +21,78 @@
          </div>
       </div>
 
+      <!-- Dashboard Statistics Cards -->
+      <div class="row mb-4">
+         <div class="col-md-3 mb-3">
+            <div class="card text-white bg-primary">
+               <div class="card-body">
+                  <h5 class="card-title">Total Users</h5>
+                  <p class="card-text display-4">{{ dashboard_stats.user_stats.total }}</p>
+               </div>
+            </div>
+         </div>
+         <div class="col-md-3 mb-3">
+            <div class="card text-white bg-success">
+               <div class="card-body">
+                  <h5 class="card-title">Active Users</h5>
+                  <p class="card-text display-4">{{ dashboard_stats.user_stats.active }}</p>
+               </div>
+            </div>
+         </div>
+         <div class="col-md-3 mb-3">
+            <div class="card text-white bg-info">
+               <div class="card-body">
+                  <h5 class="card-title">Total Posts</h5>
+                  <p class="card-text display-4">{{ dashboard_stats.content_stats.total_posts }}</p>
+               </div>
+            </div>
+         </div>
+         <div class="col-md-3 mb-3">
+            <div class="card text-white bg-warning">
+               <div class="card-body">
+                  <h5 class="card-title">Drafts</h5>
+                  <p class="card-text display-4">{{ dashboard_stats.content_stats.drafts }}</p>
+               </div>
+            </div>
+         </div>
+      </div>
+
+      <!-- Additional Stats Row -->
+      <div class="row mb-4">
+         <div class="col-md-3 mb-3">
+            <div class="card">
+               <div class="card-body text-center">
+                  <h6 class="text-muted">Published Posts</h6>
+                  <h3 class="mb-0">{{ dashboard_stats.content_stats.published }}</h3>
+               </div>
+            </div>
+         </div>
+         <div class="col-md-3 mb-3">
+            <div class="card">
+               <div class="card-body text-center">
+                  <h6 class="text-muted">Total Comments</h6>
+                  <h3 class="mb-0">{{ dashboard_stats.content_stats.total_comments }}</h3>
+               </div>
+            </div>
+         </div>
+         <div class="col-md-3 mb-3">
+            <div class="card">
+               <div class="card-body text-center">
+                  <h6 class="text-muted">Admins</h6>
+                  <h3 class="mb-0">{{ dashboard_stats.user_stats.admins }}</h3>
+               </div>
+            </div>
+         </div>
+         <div class="col-md-3 mb-3">
+            <div class="card">
+               <div class="card-body text-center">
+                  <h6 class="text-muted">Publishers</h6>
+                  <h3 class="mb-0">{{ dashboard_stats.user_stats.publishers }}</h3>
+               </div>
+            </div>
+         </div>
+      </div>
+
       <h2 class="your-posts-header">Manage Users</h2>
       <div class="table-responsive">
          <table class="table table-striped table-sm">

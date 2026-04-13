@@ -92,25 +92,31 @@ def _get_search_context(
 
     Returns dict with:
     - relevant_users: List of usernames to filter by (empty for admins)
-    - search_filter_base: Base filter for author restriction
+    - search_filter_base: Base filter for author restriction and draft exclusion
     """
     if current_user:
         if current_user.get("is_admin", False):
             # Admins can search all posts
             return {"relevant_users": [], "search_filter_base": {}}
         else:
-            # Regular users see posts from active users
+            # Regular users see published posts from active users
             active_users = get_active_users()
             return {
                 "relevant_users": active_users,
-                "search_filter_base": {"author": {"$in": active_users}},
+                "search_filter_base": {
+                    "author": {"$in": active_users},
+                    "status": {"$ne": Post.STATUS_DRAFT},
+                },
             }
     else:
-        # Anonymous users see only publisher posts
+        # Anonymous users see only published posts from publisher users
         publisher_users = get_publisher_users()
         return {
             "relevant_users": publisher_users,
-            "search_filter_base": {"author": {"$in": publisher_users}},
+            "search_filter_base": {
+                "author": {"$in": publisher_users},
+                "status": {"$ne": Post.STATUS_DRAFT},
+            },
         }
 
 
@@ -119,68 +125,77 @@ def _execute_search(
 ) -> tuple:
     """Execute search query and return posts with total count."""
     skip = (page - 1) * per_page
-    relevant_users = search_context["relevant_users"]
     search_filter_base = search_context["search_filter_base"]
 
     if query and query.strip():
-        return _execute_text_search(
-            query, search_filter_base, relevant_users, skip, per_page
-        )
+        return _execute_text_search(query, search_filter_base, skip, per_page)
     else:
         return _get_all_posts(search_filter_base, skip, per_page)
 
 
-def _execute_text_search(
-    query, search_filter_base, relevant_users, skip, per_page
-) -> tuple:
-    """Execute full-text search with native $meta: textScore relevance scoring."""
+def _execute_text_search(query, search_filter_base, skip, per_page) -> tuple:
+    """Execute full-text search with native $meta: textScore relevance scoring.
+
+    Uses $facet for pagination and count in a single database round trip.
+    """
     try:
         # Try FTS search with native relevance scoring via aggregation
         from neo_bloggy.database import get_db
 
         db = get_db()
-        text_filter = _build_fts_filter(
-            query, search_filter_base, relevant_users
-        )
 
-        # Use aggregation pipeline for native $meta: textScore
+        # Build text filter
+        text_filter = {"$text": {"$search": query}}
+        if search_filter_base:
+            match_filter = {"$and": [text_filter, search_filter_base]}
+        else:
+            match_filter = text_filter
+
+        # Use aggregation pipeline for native $meta: textScore and pagination
         pipeline = [
-            {"$match": text_filter},
-            {"$addFields": {"search_score": {"$meta": "textScore"}}},
-            {"$sort": {"search_score": -1, "datetime": -1}},
+            {"$match": match_filter},
+            {
+                "$facet": {
+                    "posts": [
+                        {
+                            "$addFields": {
+                                "search_score": {"$meta": "textScore"}
+                            }
+                        },
+                        {"$sort": {"search_score": -1, "datetime": -1}},
+                        {"$skip": skip},
+                        {"$limit": per_page},
+                    ],
+                    "total": [{"$count": "count"}],
+                }
+            },
         ]
 
-        all_results = list(db.blog_posts.aggregate(pipeline))
+        results = list(db.blog_posts.aggregate(pipeline))
 
-        # Add search_score to each result
-        for post in all_results:
+        if not results:
+            return [], 0
+
+        facet_result = results[0]
+        posts = facet_result.get("posts", [])
+        total_result = facet_result.get("total", [])
+        total_posts = total_result[0]["count"] if total_result else 0
+
+        # Ensure search_score is present
+        for post in posts:
             post["search_score"] = post.get("search_score", 0)
 
-        total_posts = len(all_results)
-
-        # Apply pagination
-        posts = all_results[skip : skip + per_page]
         return posts, total_posts
 
     except Exception:
         # Fallback to regex search
-        return _execute_regex_search(
-            query, search_filter_base, relevant_users, skip, per_page
-        )
+        return _execute_regex_search(query, search_filter_base, skip, per_page)
 
 
-def _build_fts_filter(query, search_filter_base, relevant_users):
-    """Build full-text search filter."""
-    text_filter = {"$text": {"$search": query}}
-    if relevant_users:
-        return {"$and": [text_filter, search_filter_base]}
-    return text_filter
+def _execute_regex_search(query, search_filter_base, skip, per_page) -> tuple:
+    """Execute regex-based search as fallback using $facet."""
+    from neo_bloggy.database import get_paginated_posts
 
-
-def _execute_regex_search(
-    query, search_filter_base, relevant_users, skip, per_page
-) -> tuple:
-    """Execute regex-based search as fallback."""
     escaped_query = re.escape(query)
     text_pattern: Dict[str, Any] = {"$regex": escaped_query, "$options": "i"}
     text_patterns = [
@@ -189,38 +204,21 @@ def _execute_regex_search(
         {"body": text_pattern},
     ]
 
-    search_filter: Dict[str, Any]
-    if relevant_users:
-        search_filter = {
-            "$and": [
-                {"$or": text_patterns},
-                {"author": {"$in": relevant_users}},
-            ]
-        }
+    # Combine text patterns with base filter
+    or_filter = {"$or": text_patterns}
+    if search_filter_base:
+        search_filter = {"$and": [or_filter, search_filter_base]}
     else:
-        search_filter = {"$or": text_patterns}
+        search_filter = or_filter
 
-    total_posts = Post.count_documents(search_filter)
-    posts = Post.find_many(
-        search_filter, sort=("datetime", -1), skip=skip, limit=per_page
-    )
-    return posts, total_posts
+    return get_paginated_posts(search_filter, skip, per_page)
 
 
 def _get_all_posts(search_filter_base, skip, per_page) -> tuple:
-    """Get all posts without text search."""
-    if search_filter_base:
-        total_posts = Post.count_documents(search_filter_base)
-        posts = Post.find_many(
-            search_filter_base, sort=("datetime", -1), skip=skip, limit=per_page
-        )
-    else:
-        # Admin viewing all posts
-        total_posts = Post.count_documents({})
-        posts = Post.find_many(
-            {}, sort=("datetime", -1), skip=skip, limit=per_page
-        )
-    return posts, total_posts
+    """Get all posts without text search using centralized helper."""
+    from neo_bloggy.database import get_paginated_posts
+
+    return get_paginated_posts(search_filter_base or {}, skip, per_page)
 
 
 def _build_pagination(page: int, per_page: int, total: int) -> Dict[str, Any]:

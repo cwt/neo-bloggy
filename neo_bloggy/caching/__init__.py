@@ -53,22 +53,14 @@ def preload_cache():
                 # For anonymous users, get posts from publisher users (as in get_all_posts)
                 publisher_users = get_publisher_users()
 
-                # Calculate total posts for pagination info
+                # Calculate total posts and fetch first page for pagination info
                 from neo_bloggy.config import POSTS_PER_PAGE
-                from neo_bloggy.models import Post
-
-                total_posts = Post.count_documents(
-                    {"author": {"$in": publisher_users}}
-                )
+                from neo_bloggy.database import get_paginated_posts
 
                 # Only cache the first page to avoid loading all posts at startup
                 per_page = POSTS_PER_PAGE  # Use the configured default
-                posts = Post.find_many(
-                    {"author": {"$in": publisher_users}},
-                    sort=("datetime", -1),
-                    skip=0,
-                    limit=per_page,
-                )
+                query = {"author": {"$in": publisher_users}}
+                posts, total_posts = get_paginated_posts(query, 0, per_page)
 
                 # Pre-render the template with posts to populate cache (first page only)
                 cache_version = get_posts_cache_version()

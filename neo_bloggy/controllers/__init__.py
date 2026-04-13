@@ -119,7 +119,7 @@ class UserController:
 
     @staticmethod
     def profile(current_user, username):
-        """Handle user profile page."""
+        """Handle user profile page with analytics."""
         # Security check: Only allow users to view their own profile
         if current_user["name"] != username:
             flash("You can only view your own profile.")
@@ -130,13 +130,18 @@ class UserController:
             flash("User not found.")
             return redirect(url_for("posts.get_all_posts"))
 
+        # Get user profile statistics
+        from neo_bloggy.database import get_user_profile_stats
+
+        profile_stats = get_user_profile_stats(username)
+
         # Get published posts (exclude drafts from "Your Posts" section)
         posts = Post.find_many(
             {"author": username, "status": {"$ne": Post.STATUS_DRAFT}},
             sort=("datetime", -1),
         )
 
-        # Get drafts separately
+        # Get draft posts
         drafts = Post.find_drafts_by_author(username)
 
         return render_template(
@@ -145,6 +150,7 @@ class UserController:
             posts=posts,
             drafts=drafts,
             user=user,
+            profile_stats=profile_stats,
             page_title=f"{username}'s Profile - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
         )
 
@@ -283,10 +289,16 @@ class AdminController:
 
     @staticmethod
     def admin_panel(current_user):
-        """Handle admin panel."""
+        """Handle admin panel with dashboard analytics."""
+        from neo_bloggy.database import get_admin_dashboard_stats
+
+        # Get dashboard statistics using $facet pipelines
+        dashboard_stats = get_admin_dashboard_stats()
+
         return render_template(
             "admin.html",
             users=User.find_many({"name": {"$ne": current_user["name"]}}),
+            dashboard_stats=dashboard_stats,
             page_title=f"Admin Panel - {config.get('app', {}).get('site_title', 'Neo Bloggy')}",
         )
 

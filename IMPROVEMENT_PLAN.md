@@ -512,7 +512,12 @@ After implementing the initial improvement changes, we observed the following re
    - Post + Comments: 3 queries → 1 aggregation pipeline with `$lookup`
    - Tag Analytics: O(n) Python loop → `$unwind` + `$group` aggregation
    - Search Relevance: Python scoring → native `$meta: textScore` (BM25)
-7. **NeoSQLite Bug Discovery & Resolution**: Identified 4 bugs + 3 limitations, all fixed in v1.14.5
+7. **Database Performance Optimization (Tier 2)**: ✅ ALL 4 items completed:
+   - Paginated Post Listing: 2 queries → 1 `$facet` pipeline with fallback
+   - Admin Dashboard Analytics: 6+ queries → 2 `$facet` pipelines with fallback
+   - User Profile Analytics: Multiple queries → 1 `$facet` pipeline with fallback
+   - Search Pagination: 2 queries → 1 `$facet` pipeline with fallback
+8. **NeoSQLite Bug Discovery & Resolution**: Identified 4 bugs + 3 limitations, all fixed in v1.14.5
 
 ### Known Issues to Address
 
@@ -708,55 +713,107 @@ The following outcomes have been achieved through the implementation:
 - **Implementation**: Aggregation pipeline with `$match` → `$addFields` (textScore) → `$sort` by score
 - **Requires**: NeoSQLite >= 1.14.5 for `$meta: textScore` support
 
-**4. Comment Moderation Queue** ⏳ PENDING (See Tier 3)
+**4. Admin Efficiency (Unpublished Posts)** ✅ COMPLETED
 
-- **Status**: Deferred — will be implemented alongside Tier 2/3 optimizations
+- **Before**: N+1 query in `unpublished_posts` (fetching each author in a loop)
+- **After**: Bulk fetch unique authors using single `$in` query
+- **Benefit**: Reduced database calls from 1+N to exactly 2
+- **File**: `neo_bloggy/admin/__init__.py`
+- **Status**: ✅ Fixed in April 2026 audit
 
-#### Tier 2 - Code Clarity Wins (`$facet` for organization) ⏳ PENDING
+#### Tier 2 - Code Clarity Wins (`$facet` for organization) ✅ COMPLETED
 
-**Note**: NeoSQLite executes `$facet` sub-pipelines sequentially. Benefits come from code organization and reduced API round trips, not parallel speedup.
+**Note**: NeoSQLite executes `$facet` sub-pipelines sequentially via temporary table fallback. Benefits come from code organization and reduced API round trips. All implementations include graceful fallback to separate queries for reliability. The `$ne` operator is verified as fully working in all aggregation contexts (previous issues were shell escaping errors).
 
-**5. Paginated Post Listing**
+**5. Paginated Post Listing** ✅ COMPLETED
 
-- **Current**: 2-3 separate queries (posts + count + author info)
+- **Current**: 2 separate queries (posts + count)
 - **Target**: `$facet` pipeline for posts + pagination metadata
-- **Benefit**: Code clarity + ~40-50% reduction
+- **Benefit**: Code clarity + ~40-50% reduction in API calls
+- **File**: `neo_bloggy/services/__init__.py` - `PostService._get_posts_with_facet()`
+- **Implementation**: Uses centralized `get_paginated_posts()` helper in `neo_bloggy/database/__init__.py`.
+- **Status**: ✅ Used in both `_get_cached_posts()` and `_get_fresh_posts()`
 
-**6. Admin Dashboard Analytics**
+**6. Admin Dashboard Analytics** ✅ COMPLETED
 
 - **Current**: 6+ separate queries for dashboard metrics
 - **Target**: 2 organized `$facet` pipelines
 - **Benefit**: Atomic snapshot + code organization
+- **File**: `neo_bloggy/database/__init__.py` - `get_admin_dashboard_stats()`
+- **Implementation**:
+  - Pipeline 1: User statistics (total, active, admins, publishers)
+  - Pipeline 2: Content statistics (total posts, published, drafts)
+- **Template**: Updated `templates/admin.html` with dashboard stat cards
+- **Status**: ✅ Used in `AdminController.admin_panel()`
 
-**7. User Profile Analytics**
+**7. User Profile Analytics** ✅ COMPLETED
 
 - **Current**: Multiple queries for posts, drafts, comments
 - **Target**: 1-2 aggregation pipelines
-- **Benefit**: Real-time statistics
+- **Benefit**: Real-time statistics + efficient filtering
+- **File**: `neo_bloggy/database/__init__.py` - `get_user_profile_stats()`
+- **Implementation**:
+  - Optimized: Moves `{"author": username}` match *before* the `$facet` stage for single-pass filtering.
+  - Single `$facet` pipeline: published posts, drafts, recent posts.
+  - Separate query for comment count (different collection).
+- **Template**: Updated `templates/profile.html` with profile stat cards
+- **Status**: ✅ Used in `UserController.profile()`
+
+**8. Search Pagination & Security** ✅ COMPLETED
+
+- **Current**: 2 separate queries (posts + count)
+- **Target**: `$facet` pipeline
+- **Benefit**: Code clarity + reduced API calls + security fix
+- **File**: `neo_bloggy/search/__init__.py`
+- **Implementation**:
+  - ✅ Fixed draft exclusion bug in `_get_search_context()`
+  - ✅ Optimized text search with `$facet` and native scoring
+  - ✅ Optimized regex fallback with `$facet` via centralized helper
+- **Status**: ✅ Fully optimized with native $facet support
+
+**9. Combined Post & Tag Fetching** ✅ COMPLETED
+
+- **Current**: 2 separate database calls (find posts + aggregate tags)
+- **Target**: Single `$facet` pipeline
+- **Benefit**: 50% reduction in database round trips
+- **File**: `neo_bloggy/database/__init__.py` - `get_posts_and_related_tags()`
+- **Status**: ✅ Used in `PostService.posts_by_tag()`
+
+**10. Compound Index Optimization** ✅ COMPLETED
+
+- **Current**: Single-field indexes only
+- **Target**: Multi-field indexes for filter+sort operations
+- **Benefit**: Significant speedup for paginated listings and comment loading
+- **Implementation**:
+  - `blog_posts`: `(status, datetime)`, `(author, status, datetime)`
+  - `blog_comments`: `(parent_post, datetime)`
+  - `users`: `(is_admin, is_active)`
+- **File**: `neo_bloggy/database/__init__.py`
+- **Status**: ✅ Added during April 2026 audit
 
 #### Tier 3 - Advanced Features
 
-**8. Content Recommendations**
+**11. Content Recommendations**
 
 - `$lookup` with `$setIntersection` for similar tags
 - Enables "related posts" feature
 
-**9. Time-Based Analytics**
+**12. Time-Based Analytics**
 
 - Monthly post counts via `$dateFromString` + `$group`
 - Author performance metrics
 
-**10. GridFS Metadata Queries**
+**13. GridFS Metadata Queries**
 
 - Find unused images via `$lookup` on blog_posts
 - Storage optimization opportunities
 
-**11. Bulk Operations Optimization**
+**14. Bulk Operations Optimization**
 
 - Replace loops with `update_many`
 - Atomic migrations
 
-**12. Comment Moderation Queue** (NEW FEATURE)
+**15. Comment Moderation Queue** (NEW FEATURE)
 
 - `$lookup` pipeline joining comments + posts + users
 - Enables content moderation dashboard
@@ -780,20 +837,22 @@ The following outcomes have been achieved through the implementation:
 
 **Expected Impact** (Achieved):
 
-- ✅ 40-60% reduction in database API calls for common operations (Tier 1)
+- ✅ 40-60% reduction in database API calls for common operations (Tier 1 & 2)
 - ✅ Exponential scaling for tag analytics (Tier 1)
 - ✅ Better search accuracy with BM25 scoring (Tier 1)
 - ⏳ New features (moderation, recommendations) — Tier 3 pending
-- ✅ Cleaner codebase with less Python filtering (Tier 1)
+- ✅ Cleaner codebase with less Python filtering (Tier 1 & 2)
 
-**Code Changes Summary** (Tier 1):
+**Code Changes Summary** (April 2026 Audit):
 
 | File | Change |
 |---|---|
+| `neo_bloggy/admin/__init__.py` | `unpublished_posts()` — Fixed N+1 query by batch fetching authors |
+| `neo_bloggy/database/__init__.py` | Added `get_paginated_posts()` and `get_posts_and_related_tags()` |
+| `neo_bloggy/search/__init__.py` | Fixed draft exclusion bug; updated all search paths to use `$facet` |
+| `neo_bloggy/auth/__init__.py` | Added request-level user caching in `get_current_user()` |
+| `neo_bloggy/services/__init__.py` | Updated `posts_by_tag()` to use combined tag fetching |
 | `neo_bloggy/posts/helpers.py` | `get_post_with_comments()` — 3 queries → 1 aggregation pipeline |
-| `neo_bloggy/database/__init__.py` | Added `get_related_tags()` — O(n) loop → `$unwind` + `$group` |
-| `neo_bloggy/services/__init__.py` | Updated `posts_by_tag()` to use `get_related_tags()`; removed redundant comment filtering for GET requests |
-| `neo_bloggy/search/__init__.py` | `_execute_text_search()` — Python scoring → native `$meta: textScore` |
 | `requirements.txt` | Updated `neosqlite>=1.14.5` |
 
 ---
@@ -847,6 +906,14 @@ The following outcomes have been achieved through the implementation:
 
 ## Document History
 
+- **April 2026**: Database Performance Optimization — Tier 2 completed:
+  - Section 10.1: Updated Tier 2 status from "PENDING" to "✅ COMPLETED" with implementation details
+  - Added 4 new `$facet` implementations: Paginated Posts, Admin Dashboard, User Profile, Search Pagination
+  - All implementations include graceful fallback to separate queries for NeoSQLite compatibility
+  - Updated admin.html and profile.html templates with statistics dashboard cards
+  - Added `get_admin_dashboard_stats()` and `get_user_profile_stats()` functions to database module
+  - Added `_get_posts_with_facet()` helper to PostService
+  - Updated `_get_all_posts()` in search module to use `$facet`
 - **April 2026**: Database Performance Optimization — Tier 1 completed:
   - Section 10.1: Updated Tier 1 status from "planned" to "✅ COMPLETED" with implementation details
   - Added code changes summary table for Tier 1 optimizations

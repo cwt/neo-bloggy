@@ -8,15 +8,23 @@ from neo_bloggy.models import User
 def get_current_user():
     """
     Get the current logged-in user from session.
+    Uses flask.g to cache the user for the current request context.
     Returns None if no user is logged in or if there's an issue.
     """
+    from flask import g
+
     if "user" not in session:
         return None
+
+    # Check if user is already cached in flask.g
+    if hasattr(g, "current_user"):
+        return g.current_user
 
     try:
         user = User.find_by_name(session["user"])
         # Check if user exists and is active
         if user and user.get("is_active", True):
+            g.current_user = user
             return user
         else:
             # If user is disabled or doesn't exist, clear the session

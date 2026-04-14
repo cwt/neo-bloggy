@@ -202,11 +202,12 @@ def get_publisher_users():
 
 
 def get_related_tags(search_filter, exclude_tag, limit=10):
-    """Get related tags using $unwind + $group aggregation pipeline.
+    """Get related tags using co-occurrence scoring.
 
-    Replaces O(n) Python loop through all posts with a single aggregation
-    pipeline for exponential scaling improvement.
-    Requires NeoSQLite >= 1.14.4 for $ne support after $group.
+    Finds tags that appear together with the current tag, ranked by
+    co-occurrence frequency. Uses $facet to compute both the total number
+    of posts with the current tag and how often each other tag appears
+    alongside it, giving a meaningful "relatedness" score.
 
     Args:
         search_filter: MongoDB-style query filter for posts
@@ -214,27 +215,44 @@ def get_related_tags(search_filter, exclude_tag, limit=10):
         limit: Maximum number of related tags to return
 
     Returns:
-        List of tag names sorted by frequency (descending)
+        List of tag names sorted by co-occurrence frequency (descending)
     """
     db = get_db()
 
-    # Build aggregation pipeline: match -> unwind tags -> group by tag -> filter -> sort -> limit
+    # Co-occurrence pipeline using $facet:
+    # 1. Match posts with the current tag
+    # 2. Facet into:
+    #    a. "total": count of posts with the current tag
+    #    b. "tags": unwind tags (excluding current), group by tag, count co-occurrences
+    # 3. Sort co-occurrences by frequency descending
     pipeline = [
         {"$match": search_filter},
-        {"$unwind": "$tags"},
         {
-            "$group": {
-                "_id": "$tags",
-                "count": {"$sum": 1},
+            "$facet": {
+                "total": [{"$count": "count"}],
+                "tags": [
+                    {"$unwind": "$tags"},
+                    {
+                        "$group": {
+                            "_id": "$tags",
+                            "count": {"$sum": 1},
+                        }
+                    },
+                    {"$match": {"_id": {"$ne": exclude_tag}}},
+                    {"$sort": {"count": -1, "_id": 1}},
+                    {"$limit": limit},
+                ],
             }
         },
-        {"$match": {"_id": {"$ne": exclude_tag}}},
-        {"$sort": {"count": -1, "_id": 1}},
-        {"$limit": limit},
     ]
 
     results = list(db.blog_posts.aggregate(pipeline))
-    return [r["_id"] for r in results if r["_id"]]
+    if not results:
+        return []
+
+    facet = results[0]
+    related_tags = facet.get("tags", [])
+    return [r["_id"] for r in related_tags if r["_id"]]
 
 
 def get_posts_and_related_tags(search_filter, exclude_tag, limit=10):
@@ -259,6 +277,7 @@ def get_posts_and_related_tags(search_filter, exclude_tag, limit=10):
                 "posts": [
                     {"$sort": {"datetime": -1}},
                 ],
+                "total": [{"$count": "count"}],
                 "related_tags": [
                     {"$unwind": "$tags"},
                     {

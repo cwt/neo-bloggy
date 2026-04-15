@@ -22,14 +22,14 @@ SECURITY_HEADERS = {
 CSP_DIRECTIVES = {
     "default-src": "'self'",
     "script-src": (
-        "'self' 'nonce-{nonce}' https://cdn.jsdelivr.net "
+        "'self' 'unsafe-inline' https://cdn.jsdelivr.net "
         "https://cdnjs.cloudflare.com https://platform.twitter.com "
         "https://syndication.twitter.com https://www.googletagmanager.com "
         "https://use.fontawesome.com https://maxcdn.bootstrapcdn.com "
         "https://static.cloudflareinsights.com"
     ),
     "style-src": (
-        "'self' 'unsafe-inline' 'unsafe-hashes' https://cdn.jsdelivr.net "
+        "'self' 'unsafe-inline' https://cdn.jsdelivr.net "
         "https://cdnjs.cloudflare.com https://fonts.googleapis.com "
         "https://use.fontawesome.com https://maxcdn.bootstrapcdn.com"
     ),

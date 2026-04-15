@@ -197,13 +197,13 @@ Comprehensive plan to improve the website's performance, accessibility, security
 
 ### Critical Issues (High Priority)
 
-#### 3.1 Implement Security Headers ✅ COMPLETED
+#### 3.1 Implement Security Headers ⏳ MOSTLY COMPLETED
 
 **Issue**: Missing critical security headers
 
 **Recommendations**:
 
-- Add Content Security Policy (CSP) header ✅ COMPLETED (with nonce enforcement)
+- Add Content Security Policy (CSP) header ⏳ Implemented but nonce not enforced
 - Implement HSTS header with appropriate max-age ✅ COMPLETED
 - Add Cross-Origin-Opener-Policy (COOP) header ✅ COMPLETED
 - Implement X-Frame-Options or CSP frame-ancestors directive ✅ COMPLETED
@@ -235,14 +235,14 @@ The middleware uses a policy with trusted CDN allowlists:
 - `base-uri 'self'` - Restricts base element
 - `form-action 'self'` - Restricts form submissions
 
-**✅ CSP Nonce Enforcement**:
-The `_build_csp_policy()` function in `middleware/__init__.py` properly handles nonce injection:
+**⚠️ Known Issue - CSP Nonce Not Enforced**:
+The `_build_csp_policy()` function in `middleware/__init__.py` checks for `"{nonce}"` placeholders in directive values, but **none of the `CSP_DIRECTIVES` values contain `"{nonce}"`**. This means:
 
-- `script-src` uses `'nonce-{nonce}'` for strict script enforcement
-- `style-src` uses `'unsafe-inline' 'unsafe-hashes'` (CSP spec doesn't allow combining `'unsafe-inline'` with nonces)
-- The nonce is generated per-request via `get_csp_nonce()`
-- Templates use `nonce="{{ csp_nonce }}"` on inline `<script>` and `<style>` tags
-- `'unsafe-hashes'` allows Bootstrap's dynamic inline style attributes to work
+- The nonce is generated and available to templates via `csp_nonce`
+- Templates use `nonce="{{ csp_nonce }}"` on inline scripts/styles
+- However, the CSP header does **not** include `'nonce-<value>'` in `script-src` or `style-src`
+- Inline scripts work because `'unsafe-inline'` is still permitted
+- The nonce attributes in templates provide no actual CSP enforcement benefit
 
 ## 4. Implementation Steps
 

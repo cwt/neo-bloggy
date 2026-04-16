@@ -53,7 +53,6 @@ def create_app(config_class=None):
     def inject_site_details():
         from neo_bloggy.auth import (
             get_current_user,
-            get_csp_nonce,
             get_absolute_url,
             get_canonical_url,
         )
@@ -74,7 +73,6 @@ def create_app(config_class=None):
                 )
             ),
             "user": user,
-            "csp_nonce": get_csp_nonce(),
             "get_absolute_url": get_absolute_url,
             "get_canonical_url": get_canonical_url,
         }

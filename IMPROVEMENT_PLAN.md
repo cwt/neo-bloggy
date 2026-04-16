@@ -235,14 +235,20 @@ The middleware uses a policy with trusted CDN allowlists:
 - `base-uri 'self'` - Restricts base element
 - `form-action 'self'` - Restricts form submissions
 
-**⚠️ Known Issue - CSP Nonce Not Enforced**:
-The `_build_csp_policy()` function in `middleware/__init__.py` checks for `"{nonce}"` placeholders in directive values, but **none of the `CSP_DIRECTIVES` values contain `"{nonce}"`**. This means:
+**✅ CSP Configuration - Nonce Removed for Cloudflare Compatibility**:
 
-- The nonce is generated and available to templates via `csp_nonce`
-- Templates use `nonce="{{ csp_nonce }}"` on inline scripts/styles
-- However, the CSP header does **not** include `'nonce-<value>'` in `script-src` or `style-src`
-- Inline scripts work because `'unsafe-inline'` is still permitted
-- The nonce attributes in templates provide no actual CSP enforcement benefit
+The CSP implementation has been updated to remove nonce-based enforcement:
+
+- Nonce attributes have been removed from all templates
+- CSP policy uses `'unsafe-inline'` to allow inline scripts/styles
+- This provides compatibility with Cloudflare's Rocket Loader and other features that inject inline scripts
+- The CSP still provides significant protection by:
+  - Restricting script sources to trusted CDNs only
+  - Preventing XSS from unknown domains
+  - Blocking frame embedding (clickjacking protection)
+  - Enforcing HTTPS with HSTS headers
+
+**Note**: While `'unsafe-inline'` is less strict than nonce-based CSP, it is necessary for CDN compatibility and still provides substantial security benefits over no CSP at all.
 
 ## 4. Implementation Steps
 
@@ -280,7 +286,7 @@ The `_build_csp_policy()` function in `middleware/__init__.py` checks for `"{non
 
 1. Critical CSS inlining: ✅ COMPLETED
 
-- Large `<style nonce="{{ csp_nonce }}">` block with above-fold styles
+- Large `<style>` block with above-fold styles
 - Font fallback definitions with `size-adjust`, `ascent-override` for CLS reduction
 
 1. Jumbotron image preloading: ✅ COMPLETED
@@ -383,9 +389,8 @@ def after_request(response):
     response.headers.pop("Content-Security-Policy", None)
     response.headers.pop("Content-Security-Policy-Report-Only", None)
 
-    # Add Content Security Policy with nonce-based protection
-    csp_nonce = get_csp_nonce()
-    response.headers["Content-Security-Policy"] = _build_csp_policy(csp_nonce)
+    # Add Content Security Policy (without nonce for Cloudflare compatibility)
+    response.headers["Content-Security-Policy"] = _build_csp_policy()
 
     # Update session with current user info
     user = get_current_user()
@@ -398,8 +403,8 @@ def after_request(response):
 **CSP Directives** (defined in `CSP_DIRECTIVES` dict):
 
 - `default-src: 'self'`
-- `script-src: 'self' 'nonce-{nonce}' <trusted CDNs>`
-- `style-src: 'self' 'unsafe-inline' 'unsafe-hashes' <trusted CDNs>`
+- `script-src: 'self' 'unsafe-inline' <trusted CDNs>`
+- `style-src: 'self' 'unsafe-inline' <trusted CDNs>`
 - `img-src: 'self' data: blob: https:`
 - `font-src: 'self' <trusted CDNs>`
 - `connect-src: 'self' <analytics endpoints>`
@@ -408,20 +413,11 @@ def after_request(response):
 - `base-uri: 'self'`
 - `form-action: 'self'`
 
-#### 3.2 Add nonce generation functions in `neo_bloggy/auth/__init__.py` ✅ COMPLETED
+#### 3.2 Add nonce generation functions in `neo_bloggy/auth/__init__.py` ❌ REMOVED
 
-```python
-def generate_nonce():
-    """Generate a unique nonce for CSP."""
-    import secrets
-    return secrets.token_urlsafe(16)
+~~The nonce generation functions have been removed to improve compatibility with Cloudflare CDN services that inject inline scripts.~~
 
-def get_csp_nonce():
-    """Get or create a CSP nonce for the current request."""
-    if not hasattr(g, "csp_nonce"):
-        g.csp_nonce = generate_nonce()
-    return g.csp_nonce
-```
+The CSP policy now uses `'unsafe-inline'` instead of nonces to allow inline scripts from both the application and CDN services.
 
 #### 3.3 Update context processor in `neo_bloggy/__init__.py` ✅ COMPLETED
 
@@ -430,7 +426,7 @@ def get_csp_nonce():
 def inject_site_details():
     """Inject site details into all templates."""
     from neo_bloggy.auth import (
-        get_current_user, get_csp_nonce, get_absolute_url, get_canonical_url
+        get_current_user, get_absolute_url, get_canonical_url
     )
     user = get_current_user()
     if user:
@@ -441,11 +437,12 @@ def inject_site_details():
         "site_author": config.get("app", {}).get("site_author", "Neo Bloggy"),
         "site_description": config.get("app", {}).get("site_description", "Blogging Ireland; journalism"),
         "user": user,
-        "csp_nonce": get_csp_nonce(),
         "get_absolute_url": get_absolute_url,
         "get_canonical_url": get_canonical_url,
     }
 ```
+
+**Note**: The `csp_nonce` context variable has been removed. Templates no longer use nonce attributes.
 
 #### 3.4 Image optimization functions ✅ COMPLETED (Basic)
 
@@ -560,18 +557,18 @@ The following regressions were identified and fixed during the implementation:
 - Implemented nonce generation in `neo_bloggy/auth/__init__.py`
 - Added nonce injection via context processor in `neo_bloggy/__init__.py`
 - Updated all templates with `nonce="{{ csp_nonce }}"` attributes on inline scripts and styles
-- ✅ **Updated**: Nonce is now properly injected into `script-src` header via `'nonce-{nonce}'` placeholder. `style-src` includes `'unsafe-inline' 'unsafe-hashes'` for Bootstrap compatibility.
+- ✅ **Updated**: CSP uses `'unsafe-inline'` for Cloudflare compatibility. Nonce-based enforcement has been removed to prevent conflicts with CDN-injected scripts.
 
 **Files modified**:
 
-- `neo_bloggy/middleware/__init__.py` (added nonce-based CSP)
-- `neo_bloggy/auth/__init__.py` (added nonce functions)
-- `neo_bloggy/__init__.py` (updated context processor)
-- `templates/header.html` (added nonce to inline styles and scripts)
-- `templates/footer.html` (added nonce to inline scripts)
-- `templates/post.html` (added nonce to inline scripts)
-- `templates/create_post.html` (added nonce to inline scripts)
-- `templates/upload.html` (added nonce to inline scripts)
+- `neo_bloggy/middleware/__init__.py` (CSP with `'unsafe-inline'`)
+- `neo_bloggy/auth/__init__.py` (removed nonce functions)
+- `neo_bloggy/__init__.py` (removed csp_nonce from context processor)
+- `templates/header.html` (removed nonce attributes)
+- `templates/footer.html` (removed nonce attributes)
+- `templates/post.html` (removed nonce attributes)
+- `templates/create_post.html` (removed nonce attributes)
+- `templates/upload.html` (removed nonce attributes)
 
 ## 8. Expected Outcomes
 
@@ -594,8 +591,8 @@ The following outcomes have been achieved through the implementation:
   - Added HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy headers
   - Added Cross-Origin-Opener-Policy header
   - HTML minification implemented
-  - ✅ CSP nonce enforced in `script-src` via `'nonce-{nonce}'`
-  - ✅ `style-src` includes `'unsafe-inline' 'unsafe-hashes'` for Bootstrap compatibility (dynamic inline styles and event handlers)
+  - ✅ CSP with `'unsafe-inline'` for Cloudflare CDN compatibility
+  - ✅ `style-src` includes `'unsafe-inline'` for dynamic inline styles
 
 - **Better overall user experience**: ✅ Achieved
   - Faster loading times through resource optimization
@@ -661,9 +658,9 @@ The following outcomes have been achieved through the implementation:
 ### Notable Current State
 
 - The monolithic `app.py` has been refactored into a modular `neo_bloggy` package
-- CSP implementation uses CDN allowlists with nonce enforcement for scripts
-- `style-src` includes `'unsafe-inline' 'unsafe-hashes'` to support Bootstrap's dynamic inline styles and event handlers
-- All templates use `nonce="{{ csp_nonce }}"` on inline `<script>` and `<style>` tags
+- CSP implementation uses CDN allowlists with `'unsafe-inline'` for Cloudflare compatibility
+- `style-src` includes `'unsafe-inline'` to support Bootstrap's dynamic inline styles
+- All inline `<script>` and `<style>` tags work without nonce attributes
 - Image loading optimized with width/height attributes, lazy loading, and fetchpriority
 - Full accessibility compliance implemented
 - Social media links use X instead of Twitter
@@ -675,7 +672,7 @@ The following outcomes have been achieved through the implementation:
 
 ### 10.0 Immediate Priorities (from April 2026 verification audit)
 
-1. **CSP Nonce Enforcement** ✅ COMPLETED - `script-src` uses nonce-only, `style-src` includes `'unsafe-inline' 'unsafe-hashes'` for Bootstrap compatibility
+1. **CSP Without Nonce** ✅ COMPLETED - CSP uses `'unsafe-inline'` for Cloudflare CDN compatibility. Nonce enforcement removed to prevent conflicts with CDN-injected scripts.
 2. **Responsive Images** - Implement `srcset` and `sizes` attributes for post card images
 
 ### 10.1 Database Performance Optimization (NeoSQLite Aggregation Pipeline) ✅ TIER 1 COMPLETED

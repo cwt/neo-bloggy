@@ -11,7 +11,6 @@ def get_current_user():
     Uses flask.g to cache the user for the current request context.
     Returns None if no user is logged in or if there's an issue.
     """
-    from flask import g
 
     if "user" not in session:
         return None
@@ -75,20 +74,6 @@ def admin_required(f):
         return f(current_user=current_user, *args, **kwargs)
 
     return decorated_function
-
-
-def generate_nonce():
-    """Generate a unique nonce for CSP."""
-    import secrets
-
-    return secrets.token_urlsafe(16)
-
-
-def get_csp_nonce():
-    """Get or create a CSP nonce for the current request."""
-    if not hasattr(g, "csp_nonce"):
-        g.csp_nonce = generate_nonce()
-    return g.csp_nonce
 
 
 def get_absolute_url(endpoint, **values):

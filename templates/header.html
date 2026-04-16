@@ -41,7 +41,7 @@
       {% endif %}
 
       <!-- Article schema -->
-      <script type="application/ld+json" nonce="{{ csp_nonce }}">
+      <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "Article",
@@ -91,7 +91,7 @@
       <meta property="twitter:image" content="{{ get_absolute_url('static', filename='img/logo.png') }}">
 
       <!-- WebSite schema for non-post pages -->
-      <script type="application/ld+json" nonce="{{ csp_nonce }}">
+      <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
@@ -137,7 +137,7 @@
 
 
       <!-- Critical CSS inlined for above-fold content -->
-      <style nonce="{{ csp_nonce }}">
+      <style>
          /*------------------------------------*\ #GLOBAL SETTINGS \*------------------------------------*/
          html { box-sizing: border-box; }
          body { margin: 0; font-size: 1.2rem; color: #212529; padding-top: 3.5rem; font-family: 'IBM Plex Sans Thai Looped', sans-serif; }
@@ -297,8 +297,8 @@
       {% endif %}
       {% endwith %}
 
-      <script nonce="{{ csp_nonce }}">
-      // Add copy functionality for URL buttons
+      <script>
+       // Add copy functionality for URL buttons
       document.addEventListener('DOMContentLoaded', function() {
           const copyButtons = document.querySelectorAll('.copy-url-btn');
           copyButtons.forEach(button => {

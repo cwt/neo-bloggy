@@ -4,7 +4,7 @@ import time
 
 from flask import session
 
-from neo_bloggy.auth import get_csp_nonce, get_current_user
+from neo_bloggy.auth import get_current_user
 from neo_bloggy.caching import clear_expired_cache
 from neo_bloggy.config import CACHE_ENABLED
 
@@ -18,7 +18,7 @@ SECURITY_HEADERS = {
     "Cross-Origin-Opener-Policy": "same-origin",
 }
 
-# CSP policy components (nonce injected at runtime)
+# CSP policy components (without nonce enforcement for Cloudflare compatibility)
 CSP_DIRECTIVES = {
     "default-src": "'self'",
     "script-src": (
@@ -26,7 +26,7 @@ CSP_DIRECTIVES = {
         "https://cdnjs.cloudflare.com https://platform.twitter.com "
         "https://syndication.twitter.com https://www.googletagmanager.com "
         "https://use.fontawesome.com https://maxcdn.bootstrapcdn.com "
-        "https://static.cloudflareinsights.com"
+        "https://static.cloudflareinsights.com https://ajax.cloudflare.com"
     ),
     "style-src": (
         "'self' 'unsafe-inline' https://cdn.jsdelivr.net "
@@ -49,13 +49,10 @@ CSP_DIRECTIVES = {
 }
 
 
-def _build_csp_policy(nonce: str) -> str:
-    """Build Content Security Policy string with the given nonce."""
+def _build_csp_policy() -> str:
+    """Build Content Security Policy string."""
     parts = []
     for directive, value in CSP_DIRECTIVES.items():
-        # Inject nonce into directives that support it
-        if "{nonce}" in value:
-            value = value.format(nonce=nonce)
         parts.append(f"{directive} {value}")
     return "; ".join(parts) + ";"
 
@@ -78,11 +75,8 @@ class Middleware:
         response.headers.pop("Content-Security-Policy", None)
         response.headers.pop("Content-Security-Policy-Report-Only", None)
 
-        # Add Content Security Policy with nonce-based protection
-        csp_nonce = get_csp_nonce()
-        response.headers["Content-Security-Policy"] = _build_csp_policy(
-            csp_nonce
-        )
+        # Add Content Security Policy (without nonce for Cloudflare compatibility)
+        response.headers["Content-Security-Policy"] = _build_csp_policy()
 
         # Update session with current user info
         user = get_current_user()
